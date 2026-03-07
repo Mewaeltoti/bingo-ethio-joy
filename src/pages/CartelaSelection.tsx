@@ -78,7 +78,7 @@ export default function CartelaSelection() {
     const { error } = await supabase
       .from('cartelas')
       .update({ is_used: true, owner_id: user.id } as any)
-      .in('id', Array.from(selected));
+      .in('id', Array.from(selected).map(Number));
 
     if (error) {
       toast.error('Failed to purchase cartelas');
