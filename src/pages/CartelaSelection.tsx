@@ -4,38 +4,58 @@ import BingoCartela from '@/components/BingoCartela';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { createClient } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
+import { useUser } from '@/lib/auth'; // your auth hook
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 );
 
-export default function CartelaSelection({ playerId, gameId }: { playerId: string; gameId: string }) {
-  const [cartelas, setCartelas] = useState<any[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
+interface Cartela {
+  id: string;
+  numbers: number[][];
+  is_used: boolean;
+}
 
-  // Fetch available cartelas from Supabase
+export default function CartelaSelection() {
+  const [cartelas, setCartelas] = useState<Cartela[]>([]);
+  const [visibleCartelas, setVisibleCartelas] = useState<Cartela[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
+  const pageSize = 12;
+  const navigate = useNavigate();
+  const user = useUser();
+
+  // Fetch cartelas from Supabase
   useEffect(() => {
-    const fetchCartelas = async () => {
+    async function fetchCartelas() {
       const { data, error } = await supabase
         .from('cartelas')
         .select('*')
         .eq('is_used', false)
-        .limit(12); // fetch 12 for display
+        .order('id', { ascending: true });
+
       if (error) {
-        toast.error('Error fetching cartelas');
+        toast.error('Failed to fetch cartelas');
         console.error(error);
-        setLoading(false);
         return;
       }
+
       setCartelas(data || []);
-      setLoading(false);
-    };
+    }
 
     fetchCartelas();
   }, []);
+
+  // Pagination
+  useEffect(() => {
+    const start = (page - 1) * pageSize;
+    const end = page * pageSize;
+    const nextBatch = cartelas.slice(start, end);
+    setVisibleCartelas((prev) => [...prev, ...nextBatch]);
+  }, [page, cartelas]);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
@@ -45,40 +65,54 @@ export default function CartelaSelection({ playerId, gameId }: { playerId: strin
     });
   };
 
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   const handleBuy = async () => {
-    if (!selected) {
-      toast.error('Select a cartela first');
+    if (!user?.id) {
+      toast.error('You must be logged in!');
       return;
     }
 
-    // Mark cartela as used and link to player
+    if (selected.size === 0) {
+      toast.error('Select at least one cartela!');
+      return;
+    }
+
     const { error } = await supabase
-      .from('player_cartelas')
-      .insert([{ user_id: playerId, cartela_id: selected, gameId }]);
+      .from('cartelas')
+      .update({ is_used: true, owner_id: user.id })
+      .in('id', Array.from(selected));
+
     if (error) {
-      toast.error('Failed to purchase cartela');
+      toast.error('Failed to purchase cartelas');
       console.error(error);
       return;
     }
 
-    // Mark the cartela as used
-    await supabase.from('cartelas').update({ is_used: true }).eq('id', selected);
+    setVisibleCartelas((prev) => prev.filter((c) => !selected.has(c.id)));
+    setSelected(new Set());
+    toast.success('Cartelas purchased!');
 
-    toast.success('Cartela purchased!');
-    setSelected(null);
-
-    // Refresh cartelas list
-    setCartelas((prev) => prev.filter((c) => c.id !== selected));
+    // Go to game page
+    navigate('/game');
   };
 
-  if (loading) return <p>Loading cartelas...</p>;
+  const hasMore = visibleCartelas.length < cartelas.length;
 
   return (
     <PageShell title="Choose Cartela">
-      <p className="text-sm text-muted-foreground mb-4">Select a cartela to purchase (20 ETB each)</p>
+      <p className="text-sm text-muted-foreground mb-4">
+        Select your favorite cartelas and buy them (20 ETB each)
+      </p>
 
       <div className="grid grid-cols-2 gap-3 mb-6">
-        {cartelas.map((c, i) => (
+        {visibleCartelas.map((c, i) => (
           <motion.div
             key={c.id}
             initial={{ opacity: 0, y: 10 }}
@@ -88,9 +122,9 @@ export default function CartelaSelection({ playerId, gameId }: { playerId: strin
             <BingoCartela
               numbers={c.numbers}
               size="sm"
-              label={`#${i + 1}`}
-              selected={selected === c.id}
-              onClick={() => setSelected(c.id)}
+              label={`#${c.id}`}
+              selected={selected.has(c.id)}
+              onClick={() => toggleSelect(c.id)}
               isFavorite={favorites.has(c.id)}
               onFavorite={() => toggleFavorite(c.id)}
             />
@@ -98,7 +132,18 @@ export default function CartelaSelection({ playerId, gameId }: { playerId: strin
         ))}
       </div>
 
-      {selected && (
+      {hasMore && (
+        <div className="flex justify-center mb-6">
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            className="px-5 py-2 rounded-lg bg-blue-600 text-white"
+          >
+            Load More
+          </button>
+        </div>
+      )}
+
+      {selected.size > 0 && (
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -106,9 +151,9 @@ export default function CartelaSelection({ playerId, gameId }: { playerId: strin
         >
           <button
             onClick={handleBuy}
-            className="w-full py-4 rounded-xl font-display font-bold gradient-gold text-primary-foreground text-lg active:scale-95 transition-transform"
+            className="w-full py-4 rounded-xl font-bold bg-yellow-500 text-black text-lg"
           >
-            Buy Cartela — 20 ETB
+            Buy Selected Cartelas — {selected.size * 20} ETB
           </button>
         </motion.div>
       )}
