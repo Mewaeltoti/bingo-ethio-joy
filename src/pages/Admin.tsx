@@ -18,6 +18,9 @@ export default function Admin() {
   const [autoDraw, setAutoDraw] = useState(false);
   const [drawSpeed, setDrawSpeed] = useState(10);
   const [prizeAmount, setPrizeAmount] = useState(0);
+  const [cartelaPrice, setCartelaPrice] = useState(20);
+  const [houseCutPercent, setHouseCutPercent] = useState(10);
+  const [boughtCount, setBoughtCount] = useState(0);
   const [buyingCountdown, setBuyingCountdown] = useState(0);
   const autoDrawRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const buyingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
