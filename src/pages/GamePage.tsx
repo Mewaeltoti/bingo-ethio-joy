@@ -133,7 +133,6 @@ export default function GamePage() {
           playDrawSound();
           announceNumber(num);
         }
-        }
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'games' },
         (payload: any) => {
