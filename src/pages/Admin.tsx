@@ -79,17 +79,24 @@ export default function Admin() {
   }, []);
 
   // Listen for claims → pause drawing → then admin manually verifies
+  // Helper to invoke auto-draw edge function
+  const invokeAutoDraw = async () => {
+    try {
+      await supabase.functions.invoke('auto-draw', { body: {} });
+    } catch (e) {
+      console.error('auto-draw invoke error', e);
+    }
+  };
+
   useEffect(() => {
     const channel = supabase
       .channel('admin-claims')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bingo_claims' },
         async (payload: any) => {
-          // Pause drawing immediately when claim arrives
+          // Edge function auto-pauses on pending claims, just update UI
           setAutoDraw(false);
-          if (autoDrawRef.current) clearInterval(autoDrawRef.current);
-          toast('⏸️ Claim received — pausing draw for manual verification', { icon: '🔍' });
+          toast('⏸️ Claim received — draw paused for verification', { icon: '🔍' });
 
-          // Refresh claims list
           const { data } = await supabase.from('bingo_claims').select('*').eq('game_id', 'current');
           setClaims(await enrichWithProfiles(data || []));
         }
