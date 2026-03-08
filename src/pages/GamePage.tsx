@@ -295,11 +295,8 @@ export default function GamePage() {
     toast.success(`🎯 BINGO claimed on #${cartelaId}! Verifying...`);
   };
 
-  // Active cartelas (not removed)
-  const activeCartelas = useMemo(
-    () => playerCartelas.filter(c => !removedCartelas.has(c.id)),
-    [playerCartelas, removedCartelas]
-  );
+  // All player cartelas are active (no removal)
+  const activeCartelas = playerCartelas;
 
   return (
     <PageShell title="Live Game">
