@@ -4,6 +4,7 @@ import BingoCartela from '@/components/BingoCartela';
 // lightweight: no framer-motion
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeWithRetry } from '@/lib/edgeFn';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/lib/auth';
