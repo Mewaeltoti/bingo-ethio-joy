@@ -168,11 +168,21 @@ export default function GamePage() {
         </motion.div>
       )}
 
+      {/* Pattern indicator */}
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex-shrink-0">
+          <PatternGrid pattern={gamePattern} />
+        </div>
+        <div>
+          <div className="text-sm font-display font-bold text-foreground">{gamePattern}</div>
+          <div className="text-xs text-muted-foreground">
+            Drawn: {drawnNumbers.length}/75
+          </div>
+        </div>
+      </div>
+
       {/* Full 1-75 number board */}
       <div className="mb-4">
-        <div className="text-xs text-muted-foreground mb-2">
-          Drawn: {drawnNumbers.length}/75 · Pattern: {gamePattern}
-        </div>
         <div className="rounded-xl border border-border overflow-hidden bg-card">
           {['B', 'I', 'N', 'G', 'O'].map((letter, rowIdx) => (
             <div key={letter} className="flex items-center border-b border-border last:border-b-0">
