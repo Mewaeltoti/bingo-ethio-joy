@@ -1,9 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import PageShell from '@/components/PageShell';
-import { Users, CreditCard, Gamepad2, Check, X, AlertTriangle, Plus, Minus } from 'lucide-react';
+import { Users, CreditCard, Gamepad2, Check, X, AlertTriangle, Plus, Minus, Pause, Play, Square } from 'lucide-react';
 import { PATTERNS, PatternName } from '@/lib/bingo';
 import { getBingoLetter } from '@/lib/bingoEngine';
+import { checkWin } from '@/lib/winDetection';
 import { supabase } from '@/integrations/supabase/client';
+import { useGamePresence } from '@/hooks/useGamePresence';
+import { useUser } from '@/lib/auth';
 import { toast } from 'sonner';
 
 export default function Admin() {
@@ -12,6 +16,7 @@ export default function Admin() {
   const [drawnNumbers, setDrawnNumbers] = useState<number[]>([]);
   const [gameStatus, setGameStatus] = useState('waiting');
   const [autoDraw, setAutoDraw] = useState(false);
+  const [drawSpeed, setDrawSpeed] = useState(10);
   const autoDrawRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const drawnRef = useRef<number[]>([]);
 
@@ -21,9 +26,12 @@ export default function Admin() {
   const [adjustingPlayer, setAdjustingPlayer] = useState<string | null>(null);
   const [adjustAmount, setAdjustAmount] = useState('');
 
+  const user = useUser();
+  const onlinePlayers = useGamePresence(user?.id, 'Admin');
+
   const tabs = [
-    { key: 'deposits' as const, label: 'Deposits', icon: CreditCard },
     { key: 'game' as const, label: 'Game', icon: Gamepad2 },
+    { key: 'deposits' as const, label: 'Deposits', icon: CreditCard },
     { key: 'players' as const, label: 'Players', icon: Users },
   ];
 
@@ -48,24 +56,90 @@ export default function Admin() {
       if (gameRes.data) {
         setPattern(gameRes.data.pattern as PatternName);
         setGameStatus(gameRes.data.status || 'waiting');
+        setDrawSpeed((gameRes.data as any).draw_speed || 10);
       }
       setClaims(await enrichWithProfiles(claimsRes.data || []));
     }
     fetchState();
   }, []);
 
+  // Listen for claims
   useEffect(() => {
     const channel = supabase
       .channel('admin-claims')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bingo_claims' },
-        async () => {
-          const { data } = await supabase.from('bingo_claims').select('*').eq('game_id', 'current');
-          setClaims(await enrichWithProfiles(data || []));
+        async (payload: any) => {
+          // System auto-validates claim
+          await validateAndResolveClaim(payload.new);
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
+
+  // Auto-validate bingo claims
+  const validateAndResolveClaim = async (claim: any) => {
+    // Get the claimer's cartelas
+    const { data: cartelas } = await supabase
+      .from('cartelas')
+      .select('numbers')
+      .eq('owner_id', claim.user_id);
+
+    const { data: gameData } = await supabase
+      .from('games')
+      .select('pattern')
+      .eq('id', 'current')
+      .single();
+
+    const currentPattern = (gameData as any)?.pattern || 'Full House';
+
+    // Get current drawn numbers
+    const { data: nums } = await supabase
+      .from('game_numbers')
+      .select('number')
+      .eq('game_id', 'current');
+
+    const drawnSet = new Set((nums || []).map((n: any) => n.number));
+
+    // Validate
+    let isValid = false;
+    if (cartelas) {
+      for (const c of cartelas) {
+        if (checkWin(c.numbers as number[][], drawnSet, currentPattern as PatternName)) {
+          isValid = true;
+          break;
+        }
+      }
+    }
+
+    if (isValid) {
+      // Stop drawing
+      setAutoDraw(false);
+
+      // Update game as won
+      await supabase.from('games').update({
+        status: 'won',
+        winner_id: claim.user_id,
+      }).eq('id', 'current');
+
+      // Update claim as valid
+      await supabase.from('bingo_claims').update({ is_valid: true }).eq('id', claim.id);
+
+      setGameStatus('won');
+      toast.success('🏆 System verified winner!');
+
+      // Refresh claims
+      const { data } = await supabase.from('bingo_claims').select('*').eq('game_id', 'current');
+      setClaims(await enrichWithProfiles(data || []));
+    } else {
+      // Invalid claim
+      await supabase.from('bingo_claims').update({ is_valid: false }).eq('id', claim.id);
+      toast.error('❌ Invalid bingo claim rejected by system');
+
+      const { data } = await supabase.from('bingo_claims').select('*').eq('game_id', 'current');
+      setClaims(await enrichWithProfiles(data || []));
+    }
+  };
 
   useEffect(() => {
     if (tab !== 'deposits') return;
@@ -82,17 +156,18 @@ export default function Admin() {
 
   // Auto-draw interval
   useEffect(() => {
-    if (autoDraw && gameStatus !== 'won' && gameStatus !== 'disqualified') {
-      autoDrawRef.current = setInterval(() => drawNumberInternal(), 10000);
+    if (autoDrawRef.current) clearInterval(autoDrawRef.current);
+    if (autoDraw && gameStatus === 'active') {
+      autoDrawRef.current = setInterval(() => drawNumberInternal(), drawSpeed * 1000);
     }
     return () => { if (autoDrawRef.current) clearInterval(autoDrawRef.current); };
-  }, [autoDraw, gameStatus]);
+  }, [autoDraw, gameStatus, drawSpeed]);
 
   const drawNumberInternal = async () => {
     const current = drawnRef.current;
     if (current.length >= 75) {
       setAutoDraw(false);
-      toast.error('All numbers drawn!');
+      toast.error('All 75 numbers drawn!');
       return;
     }
     let num: number;
@@ -103,7 +178,6 @@ export default function Admin() {
     setDrawnNumbers((prev) => [...prev, num]);
   };
 
-  // Start New Game → auto-starts drawing immediately
   const startNewGame = async () => {
     setAutoDraw(false);
     if (autoDrawRef.current) clearInterval(autoDrawRef.current);
@@ -113,41 +187,30 @@ export default function Admin() {
       supabase.from('bingo_claims').delete().eq('game_id', 'current'),
     ]);
     await supabase.from('games').upsert({
-      id: 'current', pattern, status: 'active', winner_id: null,
-    });
+      id: 'current', pattern, status: 'active', winner_id: null, draw_speed: drawSpeed,
+    } as any);
     setDrawnNumbers([]);
     setClaims([]);
     setGameStatus('active');
     setAutoDraw(true);
-    toast.success('🎲 Game started! Drawing every 10 seconds...');
+    toast.success(`🎲 Game started! Drawing every ${drawSpeed}s`);
   };
 
-  const resolveClaims = async () => {
-    if (claims.length === 0) {
-      toast.error('No claims to resolve');
-      return;
-    }
-
+  const pauseGame = () => {
     setAutoDraw(false);
+    toast('⏸️ Drawing paused');
+  };
 
-    if (claims.length >= 3) {
-      await supabase.from('games').update({ status: 'disqualified' }).eq('id', 'current');
-      setGameStatus('disqualified');
-      toast('🔄 3+ claims! Game disqualified.');
-      return;
-    }
+  const resumeGame = () => {
+    setAutoDraw(true);
+    toast('▶️ Drawing resumed');
+  };
 
-    if (claims.length === 2) {
-      await supabase.from('games').update({ status: 'won', winner_id: claims[0].user_id }).eq('id', 'current');
-      setGameStatus('won');
-      toast.success('🤝 Prize split between 2 players!');
-      return;
-    }
-
-    const winnerId = claims[0].user_id;
-    await supabase.from('games').update({ status: 'won', winner_id: winnerId }).eq('id', 'current');
-    setGameStatus('won');
-    toast.success('🏆 Winner confirmed!');
+  const stopGame = async () => {
+    setAutoDraw(false);
+    await supabase.from('games').update({ status: 'stopped' }).eq('id', 'current');
+    setGameStatus('stopped');
+    toast('🛑 Game stopped');
   };
 
   const handleDeposit = async (id: string, action: 'approved' | 'rejected', userId: string, amount: number) => {
@@ -158,14 +221,25 @@ export default function Admin() {
       const { data: profile } = await supabase.from('profiles').select('balance').eq('id', userId).single();
       const bal = (profile as any)?.balance || 0;
       await supabase.from('profiles').update({ balance: bal + amount } as any).eq('id', userId);
+      toast.success(`✅ Approved & credited ${amount} ETB`);
+    } else {
+      toast.success('Deposit rejected');
     }
 
     setDeposits((prev) => prev.map((d) => d.id === id ? { ...d, status: action } : d));
-    toast.success(`Deposit ${action}`);
   };
 
   return (
     <PageShell title="Admin Panel">
+      {/* Online players indicator */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/10 text-xs">
+          <Users className="w-3.5 h-3.5 text-secondary" />
+          <span className="font-bold text-secondary">{onlinePlayers.length}</span>
+          <span className="text-muted-foreground">players online</span>
+        </div>
+      </div>
+
       <div className="flex gap-2 mb-6">
         {tabs.map(({ key, label, icon: Icon }) => (
           <button
@@ -183,6 +257,7 @@ export default function Admin() {
 
       {tab === 'game' && (
         <div className="space-y-4">
+          {/* Pattern select */}
           <div>
             <label className="text-sm text-muted-foreground mb-2 block">Winning Pattern</label>
             <div className="grid grid-cols-2 gap-2">
@@ -201,61 +276,111 @@ export default function Admin() {
             </div>
           </div>
 
-          <button
-            onClick={startNewGame}
-            disabled={autoDraw}
-            className="w-full py-4 rounded-xl font-display font-bold bg-secondary text-secondary-foreground text-lg active:scale-95 transition-transform disabled:opacity-50"
-          >
-            🎲 Start New Game
-          </button>
+          {/* Draw speed */}
+          <div>
+            <label className="text-sm text-muted-foreground mb-2 block">Draw Speed: {drawSpeed}s</label>
+            <input
+              type="range"
+              min={3}
+              max={30}
+              value={drawSpeed}
+              onChange={(e) => setDrawSpeed(Number(e.target.value))}
+              disabled={autoDraw}
+              className="w-full accent-primary"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>3s (fast)</span>
+              <span>30s (slow)</span>
+            </div>
+          </div>
 
+          {/* Game controls */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={startNewGame}
+              disabled={autoDraw}
+              className="py-3 rounded-xl font-display font-bold bg-secondary text-secondary-foreground text-sm active:scale-95 transition-transform disabled:opacity-50"
+            >
+              🎲 New Game
+            </button>
+            {autoDraw ? (
+              <button
+                onClick={pauseGame}
+                className="py-3 rounded-xl font-display font-bold bg-primary text-primary-foreground text-sm active:scale-95 transition-transform flex items-center justify-center gap-1.5"
+              >
+                <Pause className="w-4 h-4" /> Pause
+              </button>
+            ) : gameStatus === 'active' ? (
+              <button
+                onClick={resumeGame}
+                className="py-3 rounded-xl font-display font-bold bg-primary text-primary-foreground text-sm active:scale-95 transition-transform flex items-center justify-center gap-1.5"
+              >
+                <Play className="w-4 h-4" /> Resume
+              </button>
+            ) : (
+              <button
+                onClick={stopGame}
+                disabled={gameStatus !== 'active'}
+                className="py-3 rounded-xl font-display font-bold bg-destructive text-destructive-foreground text-sm active:scale-95 transition-transform disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                <Square className="w-4 h-4" /> Stop
+              </button>
+            )}
+          </div>
+
+          {/* Drawing status */}
           {autoDraw && (
             <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 text-center space-y-1">
               <p className="text-sm font-display font-bold text-primary animate-pulse">
-                🔄 Drawing every 10 seconds...
+                🔄 Drawing every {drawSpeed}s...
               </p>
-              <p className="text-xs text-muted-foreground">{drawnNumbers.length}/75 numbers drawn</p>
+              <p className="text-xs text-muted-foreground">{drawnNumbers.length}/75 drawn</p>
             </div>
           )}
 
-          {/* BINGO Claims */}
+          {/* Claims - now system-resolved */}
           {claims.length > 0 && (
-            <div className="p-3 rounded-xl border border-primary/30 bg-primary/5 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-bold text-primary">
-                <AlertTriangle className="w-4 h-4" />
-                {claims.length} BINGO Claim{claims.length !== 1 ? 's' : ''}!
+            <div className="p-3 rounded-xl border border-border bg-muted/30 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <AlertTriangle className="w-4 h-4 text-primary" />
+                Claims ({claims.length})
               </div>
               {claims.map((c: any) => (
-                <div key={c.id} className="text-xs text-muted-foreground">
-                  {c.profile?.display_name || c.profile?.phone || c.user_id.slice(0, 8)}
+                <div key={c.id} className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">
+                    {c.profile?.display_name || c.profile?.phone || c.user_id.slice(0, 8)}
+                  </span>
+                  <span className={c.is_valid ? 'text-secondary font-bold' : c.is_valid === false ? 'text-destructive' : 'text-muted-foreground'}>
+                    {c.is_valid ? '✅ Valid' : c.is_valid === false ? '❌ Invalid' : '⏳ Checking'}
+                  </span>
                 </div>
               ))}
-              <button
-                onClick={resolveClaims}
-                className="w-full py-2 rounded-lg gradient-gold text-primary-foreground text-sm font-bold"
-              >
-                {claims.length >= 3 ? '🔄 Disqualify & Restart' : claims.length === 2 ? '🤝 Split Prize' : '🏆 Confirm Winner'}
-              </button>
             </div>
           )}
 
+          {/* Drawn numbers */}
           {drawnNumbers.length > 0 && (
             <div>
-              <div className="text-xs text-muted-foreground mb-2">Drawn Numbers</div>
+              <div className="text-xs text-muted-foreground mb-2">Drawn ({drawnNumbers.length})</div>
               <div className="flex flex-wrap gap-1">
-                {drawnNumbers.map((n) => (
-                  <span key={n} className="w-8 h-8 text-xs rounded-md bg-primary/20 text-primary flex items-center justify-center font-medium">
+                {drawnNumbers.map((n, i) => (
+                  <motion.span
+                    key={n}
+                    initial={i === drawnNumbers.length - 1 ? { scale: 0 } : false}
+                    animate={{ scale: 1 }}
+                    className="w-8 h-8 text-xs rounded-md bg-primary/20 text-primary flex items-center justify-center font-medium"
+                  >
                     {getBingoLetter(n)}{n}
-                  </span>
+                  </motion.span>
                 ))}
               </div>
             </div>
           )}
 
-          {(gameStatus === 'won' || gameStatus === 'disqualified') && (
-            <div className="p-4 rounded-xl bg-secondary/20 text-center">
+          {(gameStatus === 'won' || gameStatus === 'disqualified' || gameStatus === 'stopped') && (
+            <div className="p-4 rounded-xl bg-muted/50 text-center">
               <span className="text-lg">
-                {gameStatus === 'won' ? '🏆 Game finished!' : '🔄 Game disqualified!'}
+                {gameStatus === 'won' ? '🏆 Game finished!' : gameStatus === 'stopped' ? '🛑 Game stopped' : '🔄 Game disqualified!'}
               </span>
             </div>
           )}
@@ -298,81 +423,57 @@ export default function Admin() {
       )}
 
       {tab === 'players' && (() => {
-        const activePlayers = players.filter((p) => (p.balance || 0) > 0 || p.display_name);
-        const inactivePlayers = players.filter((p) => (p.balance || 0) === 0 && !p.display_name);
-
         const handleAdjust = async (playerId: string, amount: number) => {
           const player = players.find(p => p.id === playerId);
           if (!player) return;
           const newBalance = Math.max(0, (player.balance || 0) + amount);
           const { error } = await supabase.from('profiles').update({ balance: newBalance }).eq('id', playerId);
-          if (error) { toast.error('Failed to update balance'); return; }
+          if (error) { toast.error('Failed'); return; }
           setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, balance: newBalance } : p));
           setAdjustingPlayer(null);
           setAdjustAmount('');
-          toast.success(`Balance updated to ${newBalance} ETB`);
+          toast.success(`Balance → ${newBalance} ETB`);
         };
 
-        const PlayerCard = ({ p }: { p: any }) => (
-          <div className="p-3 rounded-xl bg-muted/50 space-y-2">
-            <div className="flex items-center justify-between" onClick={() => setAdjustingPlayer(adjustingPlayer === p.id ? null : p.id)}>
-              <div>
-                <div className="text-sm font-medium text-foreground">{p.display_name || p.phone || 'Unknown'}</div>
-                <div className="text-xs text-muted-foreground">{p.phone}</div>
-              </div>
-              <div className="text-sm font-display font-bold text-primary">{p.balance || 0} ETB</div>
-            </div>
-            {adjustingPlayer === p.id && (
-              <div className="flex gap-2 items-center pt-1">
-                <input
-                  type="number"
-                  value={adjustAmount}
-                  onChange={(e) => setAdjustAmount(e.target.value)}
-                  placeholder="Amount"
-                  className="flex-1 px-3 py-2 rounded-lg bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary"
-                />
-                <button
-                  onClick={() => handleAdjust(p.id, Math.abs(Number(adjustAmount)))}
-                  disabled={!adjustAmount || Number(adjustAmount) <= 0}
-                  className="p-2 rounded-lg bg-secondary text-secondary-foreground disabled:opacity-50"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleAdjust(p.id, -Math.abs(Number(adjustAmount)))}
-                  disabled={!adjustAmount || Number(adjustAmount) <= 0}
-                  className="p-2 rounded-lg bg-destructive text-destructive-foreground disabled:opacity-50"
-                >
-                  <Minus className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
-        );
-
         return (
-          <div className="space-y-4">
+          <div className="space-y-2">
             {players.length === 0 && <p className="text-center text-muted-foreground py-8">No players yet</p>}
-
-            {activePlayers.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-secondary" />
-                  <span className="text-sm font-semibold text-foreground">Active ({activePlayers.length})</span>
+            {players.map((p) => (
+              <div key={p.id} className="p-3 rounded-xl bg-muted/50 space-y-2">
+                <div className="flex items-center justify-between cursor-pointer" onClick={() => setAdjustingPlayer(adjustingPlayer === p.id ? null : p.id)}>
+                  <div>
+                    <div className="text-sm font-medium text-foreground">{p.display_name || p.phone || 'Unknown'}</div>
+                    <div className="text-xs text-muted-foreground">{p.phone}</div>
+                  </div>
+                  <div className="text-sm font-display font-bold text-primary">{p.balance || 0} ETB</div>
                 </div>
-                {activePlayers.map((p) => <PlayerCard key={p.id} p={p} />)}
+                {adjustingPlayer === p.id && (
+                  <div className="flex gap-2 items-center pt-1">
+                    <input
+                      type="number"
+                      value={adjustAmount}
+                      onChange={(e) => setAdjustAmount(e.target.value)}
+                      placeholder="Amount"
+                      className="flex-1 px-3 py-2 rounded-lg bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <button
+                      onClick={() => handleAdjust(p.id, Math.abs(Number(adjustAmount)))}
+                      disabled={!adjustAmount || Number(adjustAmount) <= 0}
+                      className="p-2 rounded-lg bg-secondary text-secondary-foreground disabled:opacity-50"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleAdjust(p.id, -Math.abs(Number(adjustAmount)))}
+                      disabled={!adjustAmount || Number(adjustAmount) <= 0}
+                      className="p-2 rounded-lg bg-destructive text-destructive-foreground disabled:opacity-50"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-
-            {inactivePlayers.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground" />
-                  <span className="text-sm font-semibold text-foreground">Inactive ({inactivePlayers.length})</span>
-                </div>
-                {inactivePlayers.map((p) => <PlayerCard key={p.id} p={p} />)}
-              </div>
-            )}
+            ))}
           </div>
         );
       })()}

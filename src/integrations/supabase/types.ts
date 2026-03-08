@@ -42,6 +42,7 @@ export type Database = {
         Row: {
           created_at: string
           id: number
+          is_favorite: boolean
           is_used: boolean
           numbers: Json
           owner_id: string | null
@@ -49,6 +50,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: number
+          is_favorite?: boolean
           is_used?: boolean
           numbers: Json
           owner_id?: string | null
@@ -56,6 +58,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: number
+          is_favorite?: boolean
           is_used?: boolean
           numbers?: Json
           owner_id?: string | null
@@ -94,6 +97,33 @@ export type Database = {
           reviewed_by?: string | null
           status?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      game_chat: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          is_reaction: boolean
+          message: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          is_reaction?: boolean
+          message: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          is_reaction?: boolean
+          message?: string
           user_id?: string
         }
         Relationships: []
@@ -152,6 +182,7 @@ export type Database = {
       games: {
         Row: {
           created_at: string
+          draw_speed: number
           id: string
           pattern: string
           status: string
@@ -159,6 +190,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          draw_speed?: number
           id?: string
           pattern?: string
           status?: string
@@ -166,6 +198,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          draw_speed?: number
           id?: string
           pattern?: string
           status?: string
