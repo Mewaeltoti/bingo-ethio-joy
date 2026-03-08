@@ -1,6 +1,12 @@
 // Simple sound effects using Web Audio API - no external files needed
 let audioCtx: AudioContext | null = null;
+let _muted = localStorage.getItem('bingo-muted') === 'true';
 
+export function isMuted() { return _muted; }
+export function setMuted(val: boolean) {
+  _muted = val;
+  localStorage.setItem('bingo-muted', String(val));
+}
 function getAudioCtx() {
   if (!audioCtx && typeof window !== 'undefined') {
     audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
