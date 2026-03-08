@@ -674,25 +674,31 @@ export default function Admin() {
               {w.status === 'pending' && (
                 <div className="flex gap-2">
                   <button onClick={async () => {
-                    const { data, error } = await supabase.functions.invoke('approve-transaction', {
+                    setActionLoading(`wd-${w.id}`);
+                    const { data, error } = await invokeWithRetry('approve-transaction', {
                       body: { type: 'withdrawal', id: w.id, action: 'approved', user_id: w.user_id, amount: w.amount },
                     });
-                    if (error || data?.error) { toast.error(data?.error || 'Failed'); return; }
+                    setActionLoading(null);
+                    if (error) { toast.error(error); return; }
                     setWithdrawals(prev => prev.map(x => x.id === w.id ? { ...x, status: 'approved' } : x));
                     toast.success(`✅ Approved & deducted ${w.amount} ETB`);
                   }}
-                    className="flex-1 py-2 rounded-lg bg-secondary text-secondary-foreground text-sm font-medium flex items-center justify-center gap-1">
-                    <Check className="w-4 h-4" /> Approve
+                    disabled={actionLoading === `wd-${w.id}`}
+                    className="flex-1 py-2 rounded-lg bg-secondary text-secondary-foreground text-sm font-medium flex items-center justify-center gap-1 disabled:opacity-50">
+                    {actionLoading === `wd-${w.id}` ? '⏳...' : <><Check className="w-4 h-4" /> Approve</>}
                   </button>
                   <button onClick={async () => {
-                    await supabase.functions.invoke('approve-transaction', {
+                    setActionLoading(`wd-${w.id}`);
+                    await invokeWithRetry('approve-transaction', {
                       body: { type: 'withdrawal', id: w.id, action: 'rejected', user_id: w.user_id, amount: w.amount },
                     });
+                    setActionLoading(null);
                     setWithdrawals(prev => prev.map(x => x.id === w.id ? { ...x, status: 'rejected' } : x));
                     toast.success('Withdrawal rejected');
                   }}
-                    className="flex-1 py-2 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium flex items-center justify-center gap-1">
-                    <X className="w-4 h-4" /> Decline
+                    disabled={actionLoading === `wd-${w.id}`}
+                    className="flex-1 py-2 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium flex items-center justify-center gap-1 disabled:opacity-50">
+                    {actionLoading === `wd-${w.id}` ? '⏳...' : <><X className="w-4 h-4" /> Decline</>}
                   </button>
                 </div>
               )}
