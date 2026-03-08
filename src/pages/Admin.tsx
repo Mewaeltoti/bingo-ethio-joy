@@ -336,7 +336,7 @@ export default function Admin() {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={startNewGame}
-              disabled={autoDraw}
+              disabled={autoDraw || gameStatus === 'buying'}
               className="py-3 rounded-xl font-display font-bold bg-secondary text-secondary-foreground text-sm active:scale-95 transition-transform disabled:opacity-50"
             >
               🎲 New Game
