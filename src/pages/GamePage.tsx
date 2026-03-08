@@ -146,6 +146,7 @@ export default function GamePage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'games' },
         (payload: any) => {
           const game = payload.new;
+          setGameStatus(game.status);
           if (game.status === 'waiting' || game.status === 'active') {
             setDrawnNumbers([]);
             setShowResult(false);
@@ -161,6 +162,9 @@ export default function GamePage() {
                   setPlayerCartelas(data || []);
                   setIsSpectator(!data || data.length === 0);
                 });
+            }
+            if (game.status === 'active') {
+              toast('🎲 New game started! Good luck!', { icon: '🔔' });
             }
           }
           if (game.status === 'won') {
