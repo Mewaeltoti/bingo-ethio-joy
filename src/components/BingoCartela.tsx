@@ -86,14 +86,13 @@ export default function BingoCartela({
               const isClickable = onMarkCell && isDrawn && !isFree;
 
               return (
-                <motion.div
+                <div
                   key={`${row}-${col}`}
                   onClick={(e) => handleCellClick(num, row, col, e)}
-                  whileTap={isClickable ? { scale: 0.9 } : undefined}
                   className={cn(
-                    'flex items-center justify-center font-display font-bold rounded transition-all',
+                    'flex items-center justify-center font-display font-bold rounded transition-colors',
                     cellSize,
-                    isClickable && 'cursor-pointer',
+                    isClickable && 'cursor-pointer active:scale-90',
                     isFree
                       ? 'bg-secondary text-secondary-foreground'
                       : isMarked
@@ -102,7 +101,7 @@ export default function BingoCartela({
                   )}
                 >
                   {isFree ? '★' : num}
-                </motion.div>
+                </div>
               );
             })}
           </div>
