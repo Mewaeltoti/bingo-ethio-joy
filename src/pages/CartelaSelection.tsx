@@ -5,6 +5,7 @@ import BingoCartela from '@/components/BingoCartela';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 import { useUser } from '@/lib/auth';
 import { Search, Heart, X, ShoppingCart } from 'lucide-react';
 
