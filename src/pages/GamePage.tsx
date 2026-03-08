@@ -398,13 +398,13 @@ export default function GamePage() {
               {boardOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
             {boardOpen && (
-              <div className="p-1.5">
+              <div className="p-1">
                 {['B', 'I', 'N', 'G', 'O'].map((letter, rowIdx) => (
-                  <div key={letter} className="flex items-center gap-0.5 mb-0.5 last:mb-0">
-                    <div className="w-5 flex-shrink-0 text-center font-display font-bold text-primary text-[10px]">
+                  <div key={letter} className="flex items-center gap-[1px] mb-[2px] last:mb-0">
+                    <div className="w-4 flex-shrink-0 text-center font-display font-bold text-primary text-[9px]">
                       {letter}
                     </div>
-                    <div className="flex flex-1 gap-px">
+                    <div className="flex flex-1 gap-[1px] justify-between">
                       {Array.from({ length: 15 }, (_, i) => {
                         const num = rowIdx * 15 + i + 1;
                         const isDrawn = drawnSet.has(num);
@@ -412,10 +412,10 @@ export default function GamePage() {
                           <div
                             key={num}
                             className={cn(
-                              'flex-1 aspect-square flex items-center justify-center text-[7px] font-bold rounded-full transition-colors',
+                              'w-[18px] h-[18px] flex items-center justify-center text-[6.5px] font-bold rounded-full border',
                               isDrawn
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted/40 text-muted-foreground/50'
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-transparent text-muted-foreground/60 border-border'
                             )}
                           >
                             {num}
