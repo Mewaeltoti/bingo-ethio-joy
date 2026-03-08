@@ -218,7 +218,9 @@ export default function Admin() {
 
     if (uniqueWinnerCount === 0) {
       toast.warning('No valid claims — resuming draw');
+      await supabase.from('games').update({ auto_draw: true } as any).eq('id', 'current');
       setAutoDraw(true);
+      invokeAutoDraw();
     } else if (uniqueWinnerCount === 1) {
       // Single player wins (even if multiple cartelas)
       const drawnNumbersList = (nums || []).map((n: any) => n.number);
