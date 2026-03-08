@@ -61,6 +61,7 @@ export default function Admin() {
         setPattern(gameRes.data.pattern as PatternName);
         setGameStatus(gameRes.data.status || 'waiting');
         setDrawSpeed((gameRes.data as any).draw_speed || 10);
+        setPrizeAmount((gameRes.data as any).prize_amount || 0);
       }
       setClaims(await enrichWithProfiles(claimsRes.data || []));
     }
