@@ -44,4 +44,4 @@ fs.writeFileSync(
   JSON.stringify(cartelas, null, 2)
 );
 
-console.log(`✅ ${TOTAL} casino-style cartelas generated`);
+console.log(`✅ ${END - START + 1} cartelas generated (IDs ${START}–${END})`);
