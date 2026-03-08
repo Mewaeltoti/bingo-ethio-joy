@@ -429,7 +429,7 @@ export default function GamePage() {
                                 'w-[20px] h-[20px] flex items-center justify-center text-[7px] font-bold rounded-full border',
                                 isDrawn
                                   ? `${rowColors.bg} text-white ${rowColors.border}`
-                                  : `bg-white/60 dark:bg-transparent text-muted-foreground/60 ${rowColors.border}/30`
+                                  : `bg-foreground/10 text-foreground/50 ${rowColors.border}/30`
                               )}
                             >
                               {num}
