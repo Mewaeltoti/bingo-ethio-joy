@@ -250,7 +250,7 @@ export default function GamePage() {
   // Per-cartela BINGO claim with local validation first
   const handleClaimBingo = async (cartelaId: number, cartela: any) => {
     if (!user?.id || isSpectator) return;
-    if (claimedCartelas.has(cartelaId) || removedCartelas.has(cartelaId)) return;
+    if (claimedCartelas.has(cartelaId)) return;
 
     // Local validation: check marked numbers match drawn and pattern
     const markedNums = getMarkedNumbersForCartela(cartela);
