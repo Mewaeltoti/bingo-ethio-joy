@@ -347,15 +347,10 @@ export default function GamePage() {
 
       {/* ACTIVE GAME - Single view layout */}
       {isGameActive && (
-        <div className="relative space-y-3 p-4 rounded-2xl bg-gradient-to-br from-amber-900/30 via-card/80 to-amber-900/30 backdrop-blur-sm border-[4px] border-amber-700/70 shadow-[inset_0_0_40px_rgba(0,0,0,0.2),0_4px_24px_rgba(0,0,0,0.3)] ring-2 ring-amber-600/30 ring-offset-2 ring-offset-background"
+        <div className="relative space-y-0 bg-gradient-to-br from-amber-900/30 via-card/80 to-amber-900/30 backdrop-blur-sm shadow-[inset_0_0_40px_rgba(0,0,0,0.2)] min-h-[calc(100vh-8rem)]"
           style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\'%3E%3Cfilter id=\'w\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.04\' numOctaves=\'5\' seed=\'2\' stitchTiles=\'stitch\'/%3E%3CfeColorMatrix type=\'saturate\' values=\'0\'/%3E%3C/filter%3E%3Crect width=\'200\' height=\'200\' filter=\'url(%23w)\' opacity=\'0.04\'/%3E%3C/svg%3E")' }}>
-          {/* Corner ornaments */}
-          <div className="absolute top-1 left-1 w-5 h-5 border-t-2 border-l-2 border-primary/50 rounded-tl-lg" />
-          <div className="absolute top-1 right-1 w-5 h-5 border-t-2 border-r-2 border-primary/50 rounded-tr-lg" />
-          <div className="absolute bottom-1 left-1 w-5 h-5 border-b-2 border-l-2 border-primary/50 rounded-bl-lg" />
-          <div className="absolute bottom-1 right-1 w-5 h-5 border-b-2 border-r-2 border-primary/50 rounded-br-lg" />
-          {/* Felt-green inner area */}
-          <div className="rounded-xl bg-gradient-to-br from-[hsl(42,60%,35%)] via-[hsl(38,50%,30%)] to-[hsl(42,60%,35%)] p-3 space-y-3 shadow-[inset_0_2px_8px_rgba(0,0,0,0.3)] text-black [&_*]:text-black [&_.text-muted-foreground]:!text-black/60 [&_.text-foreground]:!text-black [&_.text-primary]:!text-amber-600 [&_.font-display]:!text-black [&_.rounded-full.text-white]:!text-white [&_.rounded-full.text-white_*]:!text-white [&_.bg-blue-500]:!text-white [&_.bg-blue-500_*]:!text-white [&_.bg-red-500]:!text-white [&_.bg-red-500_*]:!text-white [&_.bg-green-600]:!text-white [&_.bg-green-600_*]:!text-white [&_.bg-orange-500]:!text-white [&_.bg-orange-500_*]:!text-white [&_.bg-purple-600]:!text-white [&_.bg-purple-600_*]:!text-white [&_.gradient-gold]:!text-white [&_.gradient-gold_*]:!text-white">
+          {/* Felt-green inner area — full width, no border */}
+          <div className="bg-gradient-to-br from-[hsl(42,60%,35%)] via-[hsl(38,50%,30%)] to-[hsl(42,60%,35%)] px-3 py-3 space-y-3 shadow-[inset_0_2px_8px_rgba(0,0,0,0.3)] text-black [&_*]:text-black [&_.text-muted-foreground]:!text-black/60 [&_.text-foreground]:!text-black [&_.text-primary]:!text-amber-600 [&_.font-display]:!text-black [&_.rounded-full.text-white]:!text-white [&_.rounded-full.text-white_*]:!text-white [&_.bg-blue-500]:!text-white [&_.bg-blue-500_*]:!text-white [&_.bg-red-500]:!text-white [&_.bg-red-500_*]:!text-white [&_.bg-green-600]:!text-white [&_.bg-green-600_*]:!text-white [&_.bg-orange-500]:!text-white [&_.bg-orange-500_*]:!text-white [&_.bg-purple-600]:!text-white [&_.bg-purple-600_*]:!text-white [&_.gradient-gold]:!text-white [&_.gradient-gold_*]:!text-white">
           <div className="flex items-center gap-3">
             {lastNumber ? (
               <div
