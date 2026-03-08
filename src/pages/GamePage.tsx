@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import PageShell from '@/components/PageShell';
 import BingoCartela from '@/components/BingoCartela';
 import { supabase } from '@/integrations/supabase/client';
