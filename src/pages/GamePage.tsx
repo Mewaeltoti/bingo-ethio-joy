@@ -295,30 +295,21 @@ export default function GamePage() {
   return (
     <PageShell title="Bingo">
       {/* Winner overlay - simple confetti + message */}
-      <AnimatePresence>
-        {showResult && gameResult && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm"
-            onClick={() => setShowResult(false)}
-          >
-            {gameResult.type !== 'disqualified' && <div className="text-6xl animate-bounce">🎊</div>}
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="text-center p-6 rounded-2xl bg-card border-2 border-primary max-w-xs mx-4"
-            >
-              <div className="text-5xl mb-3">{gameResult.type === 'winner' ? '🏆' : '🔄'}</div>
-              <h2 className="text-2xl font-display font-bold text-primary mb-1">
-                {gameResult.type === 'disqualified' ? 'RESTART' : 'BINGO!'}
-              </h2>
-              <p className="text-muted-foreground">{gameResult.message}</p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {showResult && gameResult && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm animate-in fade-in"
+          onClick={() => setShowResult(false)}
+        >
+          {gameResult.type !== 'disqualified' && <div className="text-6xl animate-bounce">🎊</div>}
+          <div className="text-center p-6 rounded-2xl bg-card border-2 border-primary max-w-xs mx-4">
+            <div className="text-5xl mb-3">{gameResult.type === 'winner' ? '🏆' : '🔄'}</div>
+            <h2 className="text-2xl font-display font-bold text-primary mb-1">
+              {gameResult.type === 'disqualified' ? 'RESTART' : 'BINGO!'}
+            </h2>
+            <p className="text-muted-foreground">{gameResult.message}</p>
+          </div>
+        </div>
+      )}
 
       {/* Compact header: players + balance */}
       <div className="flex items-center justify-between mb-2">
