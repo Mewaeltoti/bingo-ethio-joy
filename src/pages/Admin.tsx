@@ -366,6 +366,29 @@ export default function Admin() {
             )}
           </div>
 
+          {/* Buying countdown */}
+          {gameStatus === 'buying' && buyingCountdown > 0 && (
+            <div className="p-4 rounded-xl bg-accent/10 border border-accent/30 text-center space-y-2">
+              <p className="text-sm font-display font-bold text-foreground">
+                🛒 Buying Period
+              </p>
+              <div className="text-3xl font-display font-bold text-primary">
+                {Math.floor(buyingCountdown / 60)}:{String(buyingCountdown % 60).padStart(2, '0')}
+              </div>
+              <p className="text-xs text-muted-foreground">Game starts when timer ends</p>
+              <button
+                onClick={() => {
+                  if (buyingTimerRef.current) clearInterval(buyingTimerRef.current);
+                  setBuyingCountdown(0);
+                  startDrawing();
+                }}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold"
+              >
+                Skip & Start Now
+              </button>
+            </div>
+          )}
+
           {/* Drawing status */}
           {autoDraw && (
             <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 text-center space-y-1">
