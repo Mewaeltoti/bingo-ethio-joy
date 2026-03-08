@@ -530,6 +530,7 @@ export default function GamePage() {
                 onMarkCell={isSpectator ? undefined : (row, col) => handleMarkCell(c.id, row, col)}
                 size="sm"
                 label={`#${c.id}`}
+                showLegend
               />
               {/* Strike indicator */}
               {strikes > 0 && (
