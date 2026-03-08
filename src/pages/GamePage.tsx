@@ -348,7 +348,13 @@ export default function GamePage() {
 
       {/* ACTIVE GAME - Single view layout */}
       {isGameActive && (
-        <div className="space-y-3 p-3 rounded-2xl bg-card/80 backdrop-blur-sm border-[3px] border-primary/60 shadow-[inset_0_0_30px_rgba(0,0,0,0.15),0_0_20px_hsl(42_90%_50%/0.1)] ring-1 ring-primary/20 ring-offset-2 ring-offset-background">
+        <div className="relative space-y-3 p-4 rounded-2xl bg-gradient-to-br from-amber-900/30 via-card/80 to-amber-900/30 backdrop-blur-sm border-[4px] border-amber-700/70 shadow-[inset_0_0_40px_rgba(0,0,0,0.2),0_4px_24px_rgba(0,0,0,0.3)] ring-2 ring-amber-600/30 ring-offset-2 ring-offset-background"
+          style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\'%3E%3Cfilter id=\'w\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.04\' numOctaves=\'5\' seed=\'2\' stitchTiles=\'stitch\'/%3E%3CfeColorMatrix type=\'saturate\' values=\'0\'/%3E%3C/filter%3E%3Crect width=\'200\' height=\'200\' filter=\'url(%23w)\' opacity=\'0.04\'/%3E%3C/svg%3E")' }}>
+          {/* Corner ornaments */}
+          <div className="absolute top-1 left-1 w-5 h-5 border-t-2 border-l-2 border-primary/50 rounded-tl-lg" />
+          <div className="absolute top-1 right-1 w-5 h-5 border-t-2 border-r-2 border-primary/50 rounded-tr-lg" />
+          <div className="absolute bottom-1 left-1 w-5 h-5 border-b-2 border-l-2 border-primary/50 rounded-bl-lg" />
+          <div className="absolute bottom-1 right-1 w-5 h-5 border-b-2 border-r-2 border-primary/50 rounded-br-lg" />
           {/* Row 1: Last number + Pattern */}
           <div className="flex items-center gap-3">
             {lastNumber ? (
