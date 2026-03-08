@@ -123,6 +123,27 @@ export default function Login() {
             </button>
           </form>
 
+          <div className="text-center mt-4">
+            <button
+              type="button"
+              onClick={() => setForgotMode(!forgotMode)}
+              className="text-sm text-primary font-medium"
+            >
+              Forgot password?
+            </button>
+            {forgotMode && (
+              <div className="mt-2">
+                <button
+                  onClick={handleForgotPassword}
+                  disabled={loading}
+                  className="text-sm px-4 py-2 rounded-lg bg-muted text-foreground font-medium disabled:opacity-50"
+                >
+                  {resetSent ? 'Link sent!' : 'Send Reset Link'}
+                </button>
+              </div>
+            )}
+          </div>
+
           <p className="text-center text-sm text-muted-foreground mt-6">
             Don't have an account?{' '}
             <Link to="/signup" className="text-primary font-medium">Sign up</Link>
