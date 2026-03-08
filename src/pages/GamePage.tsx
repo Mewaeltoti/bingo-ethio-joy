@@ -9,7 +9,7 @@ import { checkWin } from '@/lib/winDetection';
 import { PatternName } from '@/lib/bingo';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import ReactConfetti from 'react-confetti';
+// react-confetti removed for lightweight build
 import { cn } from '@/lib/utils';
 import { playDrawSound, playWinSound, playMarkSound } from '@/lib/sounds';
 import { Users, Eye, Hand, ShoppingCart } from 'lucide-react';
