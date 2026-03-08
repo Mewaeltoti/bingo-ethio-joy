@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { playDrawSound, playWinSound, playMarkSound, announceNumber } from '@/lib/sounds';
 import { Users, Eye, Hand, ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import MuteToggle from '@/components/MuteToggle';
 
 const PATTERN_CELLS: Record<string, boolean[][]> = {
   'Full House': Array(5).fill(Array(5).fill(true)),
