@@ -411,7 +411,7 @@ export default function Admin() {
     setGameStatus('active');
     setAutoDraw(true);
     invokeAutoDraw();
-    toast.success(`🎲 Game started! ${bought} cartelas sold, prize: ${prize} ETB`);
+    toast.success(`🎲 Game started! ${bought} cartelas sold, prize: ${prizeAmount} ETB`);
   };
 
   const pauseGame = async () => {
