@@ -14,6 +14,8 @@ interface BingoCartelaProps {
   isFavorite?: boolean;
   onFavorite?: () => void;
   label?: string;
+  winningCells?: Set<string>;
+  autoMark?: boolean;
 }
 
 export default function BingoCartela({
@@ -27,6 +29,8 @@ export default function BingoCartela({
   isFavorite,
   onFavorite,
   label,
+  winningCells,
+  autoMark,
 }: BingoCartelaProps) {
   const cellSize =
     size === 'xs' ? 'text-[9px] w-5 h-5' :
@@ -36,9 +40,10 @@ export default function BingoCartela({
 
   const handleCellClick = (num: number, row: number, col: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (row === 2 && col === 2) return; // free space
+    if (row === 2 && col === 2) return;
     if (!onMarkNumber) return;
-    if (!drawnNumbers.has(num)) return; // can only mark drawn numbers
+    if (autoMark) return; // auto-mark mode, no manual tapping
+    if (!drawnNumbers.has(num)) return;
     onMarkNumber(num);
     playMarkSound();
   };
@@ -46,9 +51,9 @@ export default function BingoCartela({
   return (
     <div
       className={cn(
-        'relative rounded-xl border-2 p-1.5 transition-all duration-200 gradient-card',
+        'relative rounded-xl border-2 p-1.5 transition-all duration-200 bg-card',
         selected ? 'border-primary glow-gold' : 'border-border hover:border-muted-foreground',
-        onClick && 'cursor-pointer'
+        onClick && 'cursor-pointer active:scale-[0.98]'
       )}
       onClick={onClick}
     >
@@ -60,7 +65,7 @@ export default function BingoCartela({
           onClick={(e) => { e.stopPropagation(); onFavorite(); }}
           className="absolute top-0.5 right-0.5 p-0.5 z-10"
         >
-          <Heart className={cn('w-3 h-3', isFavorite ? 'fill-red-eth text-red-eth' : 'text-muted-foreground')} />
+          <Heart className={cn('w-3 h-3', isFavorite ? 'fill-red-500 text-red-500' : 'text-muted-foreground')} />
         </button>
       )}
       {/* Header */}
@@ -80,7 +85,7 @@ export default function BingoCartela({
               const isFree = row === 2 && col === 2;
               const isDrawn = drawnNumbers.has(num);
               const isMarked = isFree || playerMarked.has(num);
-              // Wrong mark: player marked but number wasn't drawn
+              const isWinCell = winningCells?.has(`${row}-${col}`);
               const isWrongMark = !isFree && playerMarked.has(num) && !isDrawn;
 
               return (
@@ -90,9 +95,11 @@ export default function BingoCartela({
                   className={cn(
                     'bingo-cell border-r border-border last:border-r-0 transition-all',
                     cellSize,
-                    onMarkNumber && isDrawn && !isMarked && 'cursor-pointer hover:bg-primary/10',
+                    onMarkNumber && !autoMark && isDrawn && !isMarked && 'cursor-pointer hover:bg-primary/10',
                     isFree
                       ? 'bingo-cell-free'
+                      : isWinCell
+                      ? 'bg-secondary text-secondary-foreground animate-pulse'
                       : isWrongMark
                       ? 'bg-destructive/30 text-destructive'
                       : isMarked

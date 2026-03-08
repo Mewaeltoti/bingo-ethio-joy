@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import PageShell from '@/components/PageShell';
 import BingoCartela from '@/components/BingoCartela';
 import { motion } from 'framer-motion';
@@ -6,12 +6,13 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/lib/auth';
-import { Search } from 'lucide-react';
+import { Search, Heart } from 'lucide-react';
 
 interface Cartela {
   id: string;
   numbers: number[][];
   is_used: boolean;
+  is_favorite: boolean;
 }
 
 export default function CartelaSelection() {
@@ -19,10 +20,12 @@ export default function CartelaSelection() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 20;
   const navigate = useNavigate();
   const user = useUser();
+  const loaderRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function fetchCartelas() {
@@ -34,28 +37,49 @@ export default function CartelaSelection() {
 
       if (error) {
         toast.error('Failed to fetch cartelas');
-        console.error(error);
         return;
       }
 
-      setCartelas((data || []) as unknown as Cartela[]);
+      const list = (data || []) as unknown as Cartela[];
+      setCartelas(list);
+      // Restore favorites
+      const favs = new Set(list.filter(c => c.is_favorite).map(c => c.id));
+      setFavorites(favs);
     }
     fetchCartelas();
   }, []);
 
+  // Infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visible.length < filtered.length) {
+          setPage((p) => p + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    if (loaderRef.current) observer.observe(loaderRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   const filtered = useMemo(() => {
-    if (!search.trim()) return cartelas;
-    return cartelas.filter((c) => String(c.id).includes(search.trim()));
-  }, [cartelas, search]);
+    let list = cartelas;
+    if (showFavoritesOnly) list = list.filter(c => favorites.has(c.id));
+    if (search.trim()) list = list.filter(c => String(c.id).includes(search.trim()));
+    return list;
+  }, [cartelas, search, showFavoritesOnly, favorites]);
 
   const visible = useMemo(() => filtered.slice(0, page * pageSize), [filtered, page]);
 
-  const toggleFavorite = (id: string) => {
+  const toggleFavorite = async (id: string) => {
+    const isFav = favorites.has(id);
     setFavorites((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      isFav ? next.delete(id) : next.add(id);
       return next;
     });
+    await supabase.from('cartelas').update({ is_favorite: !isFav } as any).eq('id', Number(id));
   };
 
   const toggleSelect = (id: string) => {
@@ -67,27 +91,15 @@ export default function CartelaSelection() {
   };
 
   const handleBuy = async () => {
-    if (!user?.id) {
-      toast.error('You must be logged in!');
-      return;
-    }
-    if (selected.size === 0) {
-      toast.error('Select at least one cartela!');
-      return;
-    }
+    if (!user?.id) { toast.error('Login required!'); return; }
+    if (selected.size === 0) { toast.error('Select at least one cartela!'); return; }
 
-    // Check balance
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('balance')
-      .eq('id', user.id)
-      .single();
-
+    const { data: profile } = await supabase.from('profiles').select('balance').eq('id', user.id).single();
     const balance = (profile as any)?.balance || 0;
     const cost = selected.size * 20;
 
     if (balance < cost) {
-      toast.error(`Insufficient balance! You need ${cost} ETB but have ${balance} ETB`);
+      toast.error(`Need ${cost} ETB, have ${balance} ETB`);
       return;
     }
 
@@ -96,37 +108,37 @@ export default function CartelaSelection() {
       .update({ is_used: true, owner_id: user.id } as any)
       .in('id', Array.from(selected).map(Number));
 
-    if (error) {
-      toast.error('Failed to purchase cartelas');
-      console.error(error);
-      return;
-    }
+    if (error) { toast.error('Purchase failed'); return; }
 
-    // Deduct balance
-    await supabase
-      .from('profiles')
-      .update({ balance: balance - cost } as any)
-      .eq('id', user.id);
-
+    await supabase.from('profiles').update({ balance: balance - cost } as any).eq('id', user.id);
     setCartelas((prev) => prev.filter((c) => !selected.has(c.id)));
     setSelected(new Set());
-    toast.success('Cartelas purchased!');
+    toast.success('Cartelas purchased! 🎉');
     navigate('/game');
   };
 
-  const hasMore = visible.length < filtered.length;
-
   return (
     <PageShell title="Choose Cartela">
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          placeholder="Search by cartela number..."
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-muted text-foreground text-sm outline-none focus:ring-2 focus:ring-primary"
-        />
+      <div className="flex gap-2 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search by number..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-muted text-foreground text-sm outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+        <button
+          onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+          className={`px-3 rounded-xl flex items-center gap-1 text-xs font-medium transition-colors ${
+            showFavoritesOnly ? 'bg-red-500/20 text-red-500' : 'bg-muted text-muted-foreground'
+          }`}
+        >
+          <Heart className="w-3.5 h-3.5" />
+          Favs
+        </button>
       </div>
 
       <p className="text-xs text-muted-foreground mb-3">
@@ -154,16 +166,8 @@ export default function CartelaSelection() {
         ))}
       </div>
 
-      {hasMore && (
-        <div className="flex justify-center mb-6">
-          <button
-            onClick={() => setPage((p) => p + 1)}
-            className="px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm"
-          >
-            Load More
-          </button>
-        </div>
-      )}
+      {/* Infinite scroll trigger */}
+      <div ref={loaderRef} className="h-4" />
 
       {selected.size > 0 && (
         <motion.div
@@ -173,7 +177,7 @@ export default function CartelaSelection() {
         >
           <button
             onClick={handleBuy}
-            className="w-full py-4 rounded-xl font-bold gradient-gold text-primary-foreground text-lg"
+            className="w-full py-4 rounded-xl font-bold gradient-gold text-primary-foreground text-lg active:scale-95 transition-transform"
           >
             Buy {selected.size} Cartela{selected.size > 1 ? 's' : ''} — {selected.size * 20} ETB
           </button>

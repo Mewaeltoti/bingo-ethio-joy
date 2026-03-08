@@ -1,16 +1,17 @@
 import { Gamepad2, Wallet, LogOut, Shield, Trophy, Plus } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
-const hiddenRoutes = ['/login', '/signup'];
+const hiddenRoutes = ['/login', '/signup', '/'];
 
 export default function BottomNav() {
   const { pathname } = useLocation();
   const user = useUser();
+  const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -32,9 +33,11 @@ export default function BottomNav() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast.success('Logged out');
+    navigate('/login');
   };
 
   const adminItems = [
+    { to: '/game', icon: Gamepad2, label: 'Game' },
     { to: '/admin', icon: Shield, label: 'Admin' },
   ];
 
@@ -42,14 +45,14 @@ export default function BottomNav() {
     { to: '/game', icon: Gamepad2, label: 'Game' },
     { to: '/cartelas', icon: Plus, label: 'Cartelas' },
     { to: '/leaderboard', icon: Trophy, label: 'Rank' },
-    { to: '/dashboard', icon: Wallet, label: 'Wallet' },
+    { to: '/payment', icon: Wallet, label: 'Wallet' },
   ];
 
   const items = isAdmin ? adminItems : playerItems;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-md safe-area-pb">
-      <div className="flex items-center justify-around py-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-md">
+      <div className="flex items-center justify-around py-2 max-w-lg mx-auto">
         {items.map(({ to, icon: Icon, label }) => {
           const active = pathname === to;
           return (
