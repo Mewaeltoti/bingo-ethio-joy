@@ -274,6 +274,13 @@ export default function Admin() {
   }, [tab]);
 
   useEffect(() => {
+    if (tab !== 'withdrawals') return;
+    (supabase.from('withdrawals' as any) as any).select('*')
+      .order('created_at', { ascending: false })
+      .then(async ({ data }: any) => setWithdrawals(await enrichWithProfiles(data || [])));
+  }, [tab]);
+
+  useEffect(() => {
     if (tab !== 'players') return;
     supabase.from('profiles').select('*').order('created_at', { ascending: false })
       .then(({ data }) => setPlayers(data || []));
