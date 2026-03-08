@@ -191,10 +191,11 @@ export default function Admin() {
       // Single player wins (even if multiple cartelas)
       const drawnNumbersList = (nums || []).map((n: any) => n.number);
       const winnerId = uniqueWinnerIds[0];
+      const { count: playersCount } = await supabase.from('cartelas').select('owner_id', { count: 'exact', head: true }).eq('is_used', true).not('owner_id', 'is', null);
       await supabase.from('games').update({ status: 'won', winner_id: winnerId }).eq('id', 'current');
       await supabase.from('game_history').insert({
         game_id: 'current', winner_id: winnerId, pattern: currentPattern,
-        players_count: 0, prize: 0, drawn_numbers: drawnNumbersList,
+        players_count: playersCount || 0, prize: prizeAmount, drawn_numbers: drawnNumbersList,
       } as any);
       await supabase.from('game_numbers').delete().eq('game_id', 'current');
       setGameStatus('won');
