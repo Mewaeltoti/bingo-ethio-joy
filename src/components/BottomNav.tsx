@@ -1,4 +1,4 @@
-import { Home, LayoutGrid, Gamepad2, Wallet, User, LogOut, Shield } from 'lucide-react';
+import { Home, LayoutGrid, Gamepad2, Wallet, User, LogOut, Shield, Trophy } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/lib/auth';
