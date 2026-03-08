@@ -539,9 +539,10 @@ export default function Admin() {
                 {claims.some((c: any) => c.is_valid === null) && (
                   <button
                     onClick={verifyAllPendingClaims}
-                    className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold"
+                    disabled={actionLoading === 'verify-all'}
+                    className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold disabled:opacity-50"
                   >
-                    Verify All
+                    {actionLoading === 'verify-all' ? '⏳ Verifying...' : 'Verify All'}
                   </button>
                 )}
               </div>
