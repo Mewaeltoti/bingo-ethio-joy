@@ -2,8 +2,9 @@ import { Wallet, ShoppingCart, History } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PageShell from '@/components/PageShell';
 import BingoCartela from '@/components/BingoCartela';
+import PullToRefresh from '@/components/PullToRefresh';
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/lib/auth';
 
@@ -13,23 +14,23 @@ export default function Dashboard() {
   const [myCartelas, setMyCartelas] = useState<any[]>([]);
   const [deposits, setDeposits] = useState<any[]>([]);
 
-  useEffect(() => {
+  const loadData = useCallback(async () => {
     if (!user?.id) return;
-    async function load() {
-      const [profileRes, cartelasRes, depositsRes] = await Promise.all([
-        supabase.from('profiles').select('balance').eq('id', user!.id).single(),
-        supabase.from('cartelas').select('*').eq('owner_id', user!.id).order('id', { ascending: true }),
-        supabase.from('deposits').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }).limit(10),
-      ]);
-      setBalance((profileRes.data as any)?.balance || 0);
-      setMyCartelas(cartelasRes.data || []);
-      setDeposits(depositsRes.data || []);
-    }
-    load();
+    const [profileRes, cartelasRes, depositsRes] = await Promise.all([
+      supabase.from('profiles').select('balance').eq('id', user.id).single(),
+      supabase.from('cartelas').select('*').eq('owner_id', user.id).order('id', { ascending: true }),
+      supabase.from('deposits').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10),
+    ]);
+    setBalance((profileRes.data as any)?.balance || 0);
+    setMyCartelas(cartelasRes.data || []);
+    setDeposits(depositsRes.data || []);
   }, [user?.id]);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   return (
     <PageShell title="My Wallet">
+      <PullToRefresh onRefresh={loadData}>
       {/* Balance */}
       <motion.div
         initial={{ y: 10, opacity: 0 }}
@@ -98,6 +99,7 @@ export default function Dashboard() {
           )}
         </div>
       </section>
+      </PullToRefresh>
     </PageShell>
   );
 }
