@@ -34,7 +34,9 @@ export default function Admin() {
   const [claims, setClaims] = useState<any[]>([]);
   const [adjustingPlayer, setAdjustingPlayer] = useState<string | null>(null);
   const [adjustAmount, setAdjustAmount] = useState('');
-  const [actionLoading, setActionLoading] = useState<string | null>(null); // tracks which action is in progress
+  const [resetPasswordPlayer, setResetPasswordPlayer] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const user = useUser();
   const navigate = useNavigate();
