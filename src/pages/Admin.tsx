@@ -17,6 +17,7 @@ export default function Admin() {
   const [gameStatus, setGameStatus] = useState('waiting');
   const [autoDraw, setAutoDraw] = useState(false);
   const [drawSpeed, setDrawSpeed] = useState(10);
+  const [prizeAmount, setPrizeAmount] = useState(0);
   const [buyingCountdown, setBuyingCountdown] = useState(0);
   const autoDrawRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const buyingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -60,6 +61,7 @@ export default function Admin() {
         setPattern(gameRes.data.pattern as PatternName);
         setGameStatus(gameRes.data.status || 'waiting');
         setDrawSpeed((gameRes.data as any).draw_speed || 10);
+        setPrizeAmount((gameRes.data as any).prize_amount || 0);
       }
       setClaims(await enrichWithProfiles(claimsRes.data || []));
     }
@@ -119,11 +121,14 @@ export default function Admin() {
         // No more pending — resolve game
         const { data: nums } = await supabase.from('game_numbers').select('number').eq('game_id', 'current');
         const drawnNumbersList = (nums || []).map((n: any) => n.number);
+        
+        // Count players (cartelas with owners)
+        const { count: playersCount } = await supabase.from('cartelas').select('owner_id', { count: 'exact', head: true }).eq('is_used', true).not('owner_id', 'is', null);
 
         await supabase.from('games').update({ status: 'won', winner_id: claim.user_id }).eq('id', 'current');
         await supabase.from('game_history').insert({
           game_id: 'current', winner_id: claim.user_id, pattern,
-          players_count: 0, prize: 0, drawn_numbers: drawnNumbersList,
+          players_count: playersCount || 0, prize: uniqueWinnerCount === 2 ? prizeAmount / 2 : prizeAmount, drawn_numbers: drawnNumbersList,
         } as any);
         await supabase.from('game_numbers').delete().eq('game_id', 'current');
         setGameStatus('won');
@@ -186,10 +191,11 @@ export default function Admin() {
       // Single player wins (even if multiple cartelas)
       const drawnNumbersList = (nums || []).map((n: any) => n.number);
       const winnerId = uniqueWinnerIds[0];
+      const { count: playersCount } = await supabase.from('cartelas').select('owner_id', { count: 'exact', head: true }).eq('is_used', true).not('owner_id', 'is', null);
       await supabase.from('games').update({ status: 'won', winner_id: winnerId }).eq('id', 'current');
       await supabase.from('game_history').insert({
         game_id: 'current', winner_id: winnerId, pattern: currentPattern,
-        players_count: 0, prize: 0, drawn_numbers: drawnNumbersList,
+        players_count: playersCount || 0, prize: prizeAmount, drawn_numbers: drawnNumbersList,
       } as any);
       await supabase.from('game_numbers').delete().eq('game_id', 'current');
       setGameStatus('won');
@@ -199,11 +205,15 @@ export default function Admin() {
     } else if (uniqueWinnerCount === 2) {
       // 2 different players — split prize
       const drawnNumbersList = (nums || []).map((n: any) => n.number);
+      const { count: playersCount2 } = await supabase.from('cartelas').select('owner_id', { count: 'exact', head: true }).eq('is_used', true).not('owner_id', 'is', null);
       await supabase.from('games').update({ status: 'won', winner_id: uniqueWinnerIds[0] }).eq('id', 'current');
-      await supabase.from('game_history').insert({
-        game_id: 'current', winner_id: uniqueWinnerIds[0], pattern: currentPattern,
-        players_count: 0, prize: 0, drawn_numbers: drawnNumbersList,
-      } as any);
+      // Insert history for each winner with split prize
+      for (const wId of uniqueWinnerIds) {
+        await supabase.from('game_history').insert({
+          game_id: 'current', winner_id: wId, pattern: currentPattern,
+          players_count: playersCount2 || 0, prize: prizeAmount / 2, drawn_numbers: drawnNumbersList,
+        } as any);
+      }
       await supabase.from('game_numbers').delete().eq('game_id', 'current');
       setGameStatus('won');
       setDrawnNumbers([]);
@@ -277,7 +287,7 @@ export default function Admin() {
     ]);
     // Set game to "buying" status — 2 min rest
     await supabase.from('games').upsert({
-      id: 'current', pattern, status: 'buying', winner_id: null, draw_speed: drawSpeed,
+      id: 'current', pattern, status: 'buying', winner_id: null, draw_speed: drawSpeed, prize_amount: prizeAmount,
     } as any);
     setDrawnNumbers([]);
     setClaims([]);
@@ -401,6 +411,24 @@ export default function Admin() {
               <span>3s (fast)</span>
               <span>30s (slow)</span>
             </div>
+          </div>
+
+          {/* Prize Amount */}
+          <div>
+            <label className="text-sm text-muted-foreground mb-2 block">Prize Pot (ETB)</label>
+            <input
+              type="number"
+              min={0}
+              step={10}
+              value={prizeAmount}
+              onChange={(e) => setPrizeAmount(Number(e.target.value) || 0)}
+              disabled={autoDraw}
+              placeholder="Enter prize amount"
+              className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              1 winner = full • 2 winners = {prizeAmount ? (prizeAmount / 2).toFixed(0) : '0'} ETB each
+            </p>
           </div>
 
           {/* Game controls */}
