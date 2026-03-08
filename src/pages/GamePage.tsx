@@ -332,6 +332,7 @@ export default function GamePage() {
 
   return (
     <PageShell title="Bingo" whiteBg noPadding>
+      <PullToRefresh onRefresh={refreshGameData}>
       {/* Winner overlay - simple confetti + message */}
       {showResult && gameResult && (
         <div
