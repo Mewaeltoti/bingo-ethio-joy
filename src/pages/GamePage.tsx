@@ -9,9 +9,9 @@ import { checkWin } from '@/lib/winDetection';
 import { PatternName } from '@/lib/bingo';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import ReactConfetti from 'react-confetti';
+// react-confetti removed for lightweight build
 import { cn } from '@/lib/utils';
-import { playDrawSound, playWinSound, playMarkSound } from '@/lib/sounds';
+import { playDrawSound, playWinSound, playMarkSound, announceNumber } from '@/lib/sounds';
 import { Users, Eye, Hand, ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -128,8 +128,10 @@ export default function GamePage() {
       .channel('game-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'game_numbers' },
         (payload: any) => {
-          setDrawnNumbers((prev) => [...prev, payload.new.number]);
+          const num = payload.new.number;
+          setDrawnNumbers((prev) => [...prev, num]);
           playDrawSound();
+          announceNumber(num);
         }
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'games' },
@@ -299,7 +301,7 @@ export default function GamePage() {
             className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm"
             onClick={() => setShowResult(false)}
           >
-            {gameResult.type !== 'disqualified' && <ReactConfetti recycle={false} numberOfPieces={200} />}
+            {gameResult.type !== 'disqualified' && <div className="text-6xl animate-bounce">🎊</div>}
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
