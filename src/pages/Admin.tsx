@@ -676,12 +676,10 @@ export default function Admin() {
               {w.status === 'pending' && (
                 <div className="flex gap-2">
                   <button onClick={async () => {
-                    // Deduct balance then approve
-                    const { data: profile } = await supabase.from('profiles').select('balance').eq('id', w.user_id).single();
-                    const bal = (profile as any)?.balance || 0;
-                    if (bal < w.amount) { toast.error('User has insufficient balance'); return; }
-                    await supabase.from('profiles').update({ balance: bal - w.amount } as any).eq('id', w.user_id);
-                    await (supabase.from('withdrawals' as any) as any).update({ status: 'approved' }).eq('id', w.id);
+                    const { data, error } = await supabase.functions.invoke('approve-transaction', {
+                      body: { type: 'withdrawal', id: w.id, action: 'approved', user_id: w.user_id, amount: w.amount },
+                    });
+                    if (error || data?.error) { toast.error(data?.error || 'Failed'); return; }
                     setWithdrawals(prev => prev.map(x => x.id === w.id ? { ...x, status: 'approved' } : x));
                     toast.success(`✅ Approved & deducted ${w.amount} ETB`);
                   }}
@@ -689,7 +687,9 @@ export default function Admin() {
                     <Check className="w-4 h-4" /> Approve
                   </button>
                   <button onClick={async () => {
-                    await (supabase.from('withdrawals' as any) as any).update({ status: 'rejected' }).eq('id', w.id);
+                    await supabase.functions.invoke('approve-transaction', {
+                      body: { type: 'withdrawal', id: w.id, action: 'rejected', user_id: w.user_id, amount: w.amount },
+                    });
                     setWithdrawals(prev => prev.map(x => x.id === w.id ? { ...x, status: 'rejected' } : x));
                     toast.success('Withdrawal rejected');
                   }}
