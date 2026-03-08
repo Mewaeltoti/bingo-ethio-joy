@@ -311,8 +311,7 @@ export default function GamePage() {
         </div>
       )}
 
-      {/* Compact header: players + balance */}
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2 px-3 pt-2">
         <div className="flex items-center gap-2 text-xs">
           <span className="flex items-center gap-1 text-muted-foreground">
             <Users className="w-3.5 h-3.5" />
