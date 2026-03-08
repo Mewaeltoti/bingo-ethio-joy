@@ -228,11 +228,7 @@ export default function CartelaSelection() {
 
       {/* Fixed buy bar */}
       {selected.size > 0 && (
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="fixed bottom-20 left-4 right-4 z-40"
-        >
+        <div className="fixed bottom-20 left-4 right-4 z-40">
           <button
             onClick={() => setShowConfirm(true)}
             className="w-full py-4 rounded-xl font-bold gradient-gold text-primary-foreground text-lg active:scale-95 transition-transform flex items-center justify-center gap-2"
@@ -240,7 +236,7 @@ export default function CartelaSelection() {
             <ShoppingCart className="w-5 h-5" />
             Buy {selected.size} Cartela{selected.size > 1 ? 's' : ''} — {cost} ETB
           </button>
-        </motion.div>
+        </div>
       )}
 
       {/* Confirmation dialog */}
