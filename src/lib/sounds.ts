@@ -15,6 +15,7 @@ function getAudioCtx() {
 }
 
 function playTone(frequency: number, duration: number, type: OscillatorType = 'sine', volume = 0.3) {
+  if (_muted) return;
   const ctx = getAudioCtx();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume();
