@@ -302,10 +302,12 @@ export default function Admin() {
   };
 
   const handleDeposit = async (id: string, action: 'approved' | 'rejected', userId: string, amount: number) => {
-    const { error } = await supabase.functions.invoke('approve-transaction', {
+    setActionLoading(`dep-${id}`);
+    const { error } = await invokeWithRetry('approve-transaction', {
       body: { type: 'deposit', id, action, user_id: userId, amount },
     });
-    if (error) { toast.error('Failed'); return; }
+    setActionLoading(null);
+    if (error) { toast.error(`Failed: ${error}`); return; }
 
     toast.success(action === 'approved' ? `✅ Approved & credited ${amount} ETB` : 'Deposit rejected');
     setDeposits((prev) => prev.map((d) => d.id === id ? { ...d, status: action } : d));
