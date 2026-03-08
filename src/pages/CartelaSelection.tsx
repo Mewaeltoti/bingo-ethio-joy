@@ -127,7 +127,7 @@ export default function CartelaSelection() {
 
     const { data: profile } = await supabase.from('profiles').select('balance').eq('id', user.id).single();
     const balance = (profile as any)?.balance || 0;
-    const cost = selected.size * 20;
+    const cost = selected.size * cartelaPrice;
 
     if (balance < cost) {
       toast.error(`Need ${cost} ETB, have ${balance} ETB`);
