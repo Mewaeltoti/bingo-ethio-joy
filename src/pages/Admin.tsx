@@ -326,8 +326,9 @@ export default function Admin() {
     ]);
     // Set game to "buying" status — 2 min rest
     await supabase.from('games').upsert({
-      id: 'current', pattern, status: 'buying', winner_id: null, draw_speed: drawSpeed, prize_amount: prizeAmount,
+      id: 'current', pattern, status: 'buying', winner_id: null, draw_speed: drawSpeed, prize_amount: 0,
     } as any);
+    setBoughtCount(0);
     setDrawnNumbers([]);
     setClaims([]);
     setGameStatus('buying');
