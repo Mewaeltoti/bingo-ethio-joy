@@ -121,11 +121,14 @@ export default function Admin() {
         // No more pending — resolve game
         const { data: nums } = await supabase.from('game_numbers').select('number').eq('game_id', 'current');
         const drawnNumbersList = (nums || []).map((n: any) => n.number);
+        
+        // Count players (cartelas with owners)
+        const { count: playersCount } = await supabase.from('cartelas').select('owner_id', { count: 'exact', head: true }).eq('is_used', true).not('owner_id', 'is', null);
 
         await supabase.from('games').update({ status: 'won', winner_id: claim.user_id }).eq('id', 'current');
         await supabase.from('game_history').insert({
           game_id: 'current', winner_id: claim.user_id, pattern,
-          players_count: 0, prize: 0, drawn_numbers: drawnNumbersList,
+          players_count: playersCount || 0, prize: uniqueWinnerCount === 2 ? prizeAmount / 2 : prizeAmount, drawn_numbers: drawnNumbersList,
         } as any);
         await supabase.from('game_numbers').delete().eq('game_id', 'current');
         setGameStatus('won');
