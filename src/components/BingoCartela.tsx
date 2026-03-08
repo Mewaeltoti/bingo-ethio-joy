@@ -121,8 +121,6 @@ export default function BingoCartela({
                       ? 'bg-green-500 text-white'
                       : isMarked
                       ? 'bg-rose-500 text-white shadow-md'
-                      : isDrawn
-                      ? cn(COL_DRAWN_COLORS[col], 'text-foreground')
                       : 'bg-muted/60 text-foreground'
                   )}
                 >
