@@ -72,13 +72,22 @@ export default function BottomNav() {
           );
         })}
         {user && (
-          <button
-            onClick={handleLogout}
-            className="flex flex-col items-center gap-0.5 px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-destructive"
-          >
-            <LogOut className="w-5 h-5" />
-            <span className="font-medium">Logout</span>
-          </button>
+          <>
+            <button
+              onClick={() => { const next = !muted; setMuted(next); setLocalMuted(next); }}
+              className="flex flex-col items-center gap-0.5 px-3 py-1 text-xs text-muted-foreground transition-colors"
+            >
+              {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              <span className="font-medium">{muted ? 'Muted' : 'Sound'}</span>
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex flex-col items-center gap-0.5 px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-destructive"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="font-medium">Logout</span>
+            </button>
+          </>
         )}
       </div>
     </nav>
