@@ -8,10 +8,9 @@ import { getBingoLetter } from '@/lib/bingoEngine';
 import { checkWin } from '@/lib/winDetection';
 import { PatternName } from '@/lib/bingo';
 import { toast } from 'sonner';
-// lightweight: no framer-motion
 import { cn } from '@/lib/utils';
 import { playDrawSound, playWinSound, playMarkSound, announceNumber } from '@/lib/sounds';
-import { Users, Eye, Hand, ShoppingCart } from 'lucide-react';
+import { Users, Eye, Hand, ShoppingCart, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MuteToggle from '@/components/MuteToggle';
 
