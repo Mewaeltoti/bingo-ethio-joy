@@ -101,6 +101,7 @@ export default function GamePage() {
       if (gameRes.data) {
         setGamePattern(gameRes.data.pattern || 'Full House');
         setGameStatus(gameRes.data.status || 'waiting');
+        setPrizeAmount((gameRes.data as any).prize_amount || 0);
         if (gameRes.data.status === 'won') {
           setGameResult({ type: 'winner', message: 'Someone won this round! 🏆' });
           setShowResult(true);
