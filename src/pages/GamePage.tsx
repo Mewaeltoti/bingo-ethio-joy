@@ -538,6 +538,7 @@ export default function GamePage() {
           </div>{/* end felt inner */}
         </div>
       )}
+      </PullToRefresh>
     </PageShell>
   );
 }
