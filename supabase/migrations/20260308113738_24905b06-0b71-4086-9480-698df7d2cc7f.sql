@@ -1,0 +1,1 @@
+CREATE POLICY "Anyone can read profiles" ON public.profiles FOR SELECT USING (true);
