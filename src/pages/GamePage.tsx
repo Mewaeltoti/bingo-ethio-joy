@@ -456,7 +456,7 @@ export default function GamePage() {
                         {isClaimed ? 'Verifying...' : 'BINGO!'}
                       </button>
                     )}
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
