@@ -28,20 +28,29 @@ export default function Admin() {
   // Keep ref in sync
   useEffect(() => { drawnRef.current = drawnNumbers; }, [drawnNumbers]);
 
+  // Helper: enrich records with profile data
+  const enrichWithProfiles = async (records: any[], userIdField = 'user_id') => {
+    if (!records.length) return records;
+    const userIds = [...new Set(records.map(r => r[userIdField]))];
+    const { data: profiles } = await supabase.from('profiles').select('id, phone, display_name').in('id', userIds);
+    const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+    return records.map(r => ({ ...r, profile: profileMap.get(r[userIdField]) || null }));
+  };
+
   // Fetch game state
   useEffect(() => {
     async function fetchState() {
       const [numbersRes, gameRes, claimsRes] = await Promise.all([
         supabase.from('game_numbers').select('number').eq('game_id', 'current').order('id', { ascending: true }),
         supabase.from('games').select('*').eq('id', 'current').maybeSingle(),
-        supabase.from('bingo_claims').select('*, profiles:user_id(display_name, phone)').eq('game_id', 'current'),
+        supabase.from('bingo_claims').select('*').eq('game_id', 'current'),
       ]);
       if (numbersRes.data) setDrawnNumbers(numbersRes.data.map((n: any) => n.number));
       if (gameRes.data) {
         setPattern(gameRes.data.pattern as PatternName);
         setGameStatus(gameRes.data.status || 'waiting');
       }
-      setClaims(claimsRes.data || []);
+      setClaims(await enrichWithProfiles(claimsRes.data || []));
     }
     fetchState();
   }, []);
@@ -51,9 +60,9 @@ export default function Admin() {
     const channel = supabase
       .channel('admin-claims')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bingo_claims' },
-        () => {
-          supabase.from('bingo_claims').select('*, profiles:user_id(display_name, phone)').eq('game_id', 'current')
-            .then(({ data }) => setClaims(data || []));
+        async () => {
+          const { data } = await supabase.from('bingo_claims').select('*').eq('game_id', 'current');
+          setClaims(await enrichWithProfiles(data || []));
         }
       )
       .subscribe();
@@ -63,9 +72,9 @@ export default function Admin() {
   // Fetch deposits
   useEffect(() => {
     if (tab !== 'deposits') return;
-    supabase.from('deposits').select('*, profiles:user_id(phone, display_name)')
+    supabase.from('deposits').select('*')
       .order('created_at', { ascending: false })
-      .then(({ data }) => setDeposits(data || []));
+      .then(async ({ data }) => setDeposits(await enrichWithProfiles(data || [])));
   }, [tab]);
 
   // Fetch players
@@ -231,7 +240,7 @@ export default function Admin() {
               </div>
               {claims.map((c: any) => (
                 <div key={c.id} className="text-xs text-muted-foreground">
-                  {(c.profiles as any)?.display_name || (c.profiles as any)?.phone || c.user_id.slice(0, 8)}
+                  {c.profile?.display_name || c.profile?.phone || c.user_id.slice(0, 8)}
                 </div>
               ))}
               <button
@@ -275,7 +284,7 @@ export default function Admin() {
                 <div>
                   <div className="text-sm font-medium text-foreground">{d.bank} — {d.amount} ETB</div>
                   <div className="text-xs text-muted-foreground">
-                    Ref: {d.reference} · {(d.profiles as any)?.phone || 'Unknown'}
+                    Ref: {d.reference} · {d.profile?.display_name || d.profile?.phone || 'Unknown'}
                   </div>
                 </div>
                 <span className={`text-xs font-semibold px-2 py-1 rounded-full ${

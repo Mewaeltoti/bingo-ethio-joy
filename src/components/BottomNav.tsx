@@ -9,9 +9,9 @@ import { useEffect, useState } from 'react';
 const navItems = [
   { to: '/', icon: Home, label: 'Home' },
   { to: '/game', icon: Gamepad2, label: 'Game' },
-  { to: '/leaderboard', icon: Trophy, label: 'Rank' },
-  { to: '/dashboard', icon: Wallet, label: 'Wallet' },
-  { to: '/profile', icon: User, label: 'Profile' },
+  { to: '/leaderboard', icon: Trophy, label: 'Rank', hideOnAdmin: true },
+  { to: '/dashboard', icon: Wallet, label: 'Wallet', hideOnAdmin: true },
+  { to: '/profile', icon: User, label: 'Profile', hideOnAdmin: true },
 ];
 
 const hiddenRoutes = ['/login', '/signup'];
@@ -42,8 +42,10 @@ export default function BottomNav() {
     toast.success('Logged out');
   };
 
+  const isOnAdmin = pathname === '/admin';
+  const filteredNav = isOnAdmin ? navItems.filter((n) => !(n as any).hideOnAdmin) : navItems;
   const allItems = [
-    ...navItems,
+    ...filteredNav,
     ...(isAdmin ? [{ to: '/admin', icon: Shield, label: 'Admin' }] : []),
   ];
 
