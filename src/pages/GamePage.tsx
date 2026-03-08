@@ -58,13 +58,13 @@ export default function GamePage() {
   const navigate = useNavigate();
   const players = useGamePresence(user?.id, displayName);
 
-  // Fetch profile
+  // Fetch profile — use phone as display name
   useEffect(() => {
     if (!user?.id) return;
-    supabase.from('profiles').select('display_name, balance').eq('id', user.id).single()
+    supabase.from('profiles').select('display_name, balance, phone').eq('id', user.id).single()
       .then(({ data }) => {
         if (data) {
-          setDisplayName((data as any).display_name || '');
+          setDisplayName((data as any).phone || (data as any).display_name || '');
           setBalance((data as any).balance || 0);
         }
       });
