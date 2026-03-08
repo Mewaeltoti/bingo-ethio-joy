@@ -208,10 +208,17 @@ export default function Admin() {
         players_count: playersCount || 0, prize: prizeAmount, drawn_numbers: drawnNumbersList,
       } as any);
       await supabase.from('game_numbers').delete().eq('game_id', 'current');
+
+      // Credit winner balance
+      const { data: wp } = await supabase.from('profiles').select('balance').eq('id', winnerId).single();
+      if (wp) {
+        await supabase.from('profiles').update({ balance: (wp as any).balance + prizeAmount } as any).eq('id', winnerId);
+      }
+
       setGameStatus('won');
       setDrawnNumbers([]);
       const winnerName = validClaimers.find((c: any) => c.user_id === winnerId)?.profile?.display_name || 'Player';
-      toast.success(`🏆 ${winnerName} wins! (${validClaimers.length} cartela${validClaimers.length > 1 ? 's' : ''})`);
+      toast.success(`🏆 ${winnerName} wins ${prizeAmount} ETB! Balance credited.`);
     } else if (uniqueWinnerCount === 2) {
       // 2 different players — split prize
       const drawnNumbersList = (nums || []).map((n: any) => n.number);
