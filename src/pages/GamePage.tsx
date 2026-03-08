@@ -184,8 +184,6 @@ export default function GamePage() {
             setGameResult(null);
             setMarkedMap(new Map());
             setClaimedCartelas(new Set());
-            setRemovedCartelas(new Set());
-            setStrikeMap(new Map());
           }
           if (game.status === 'won') {
             setGameResult({ type: 'winner', message: 'Someone won this round! 🏆' });
