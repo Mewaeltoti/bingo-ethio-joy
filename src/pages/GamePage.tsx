@@ -195,6 +195,7 @@ export default function GamePage() {
             }
           }
           if (game.pattern) setGamePattern(game.pattern);
+          if (game.prize_amount !== undefined) setPrizeAmount(game.prize_amount);
         }
       )
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bingo_claims' },
