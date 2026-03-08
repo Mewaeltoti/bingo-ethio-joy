@@ -99,6 +99,7 @@ export default function GamePage() {
       if (numbersRes.data) setDrawnNumbers(numbersRes.data.map((n: any) => n.number));
       if (gameRes.data) {
         setGamePattern(gameRes.data.pattern || 'Full House');
+        setGameStatus(gameRes.data.status || 'waiting');
         if (gameRes.data.status === 'won') {
           setGameResult({ type: 'winner', message: 'Someone won this round! 🏆' });
           setShowResult(true);
