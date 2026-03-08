@@ -419,10 +419,9 @@ export default function GamePage() {
           {/* Row 3: Player's cartelas - responsive grid */}
           {playerCartelas.length > 0 ? (
             <div className={cn(
-              'grid gap-3',
-              playerCartelas.length === 1 ? 'grid-cols-1 max-w-[200px] mx-auto' :
-              playerCartelas.length === 2 ? 'grid-cols-2' :
-              'grid-cols-2 lg:grid-cols-3'
+              playerCartelas.length === 1 ? 'grid grid-cols-1 max-w-[200px] mx-auto gap-3' :
+              playerCartelas.length === 2 ? 'grid grid-cols-2 gap-3' :
+              'flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-2 px-2'
             )}>
               {playerCartelas.map((c) => {
                 const cellsMarked = markedMap.get(c.id) || new Set<string>();
