@@ -22,7 +22,7 @@ export default function Admin() {
   const [houseCutPercent, setHouseCutPercent] = useState(10);
   const [boughtCount, setBoughtCount] = useState(0);
   const [buyingCountdown, setBuyingCountdown] = useState(0);
-  const autoDrawRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
   const buyingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const drawnRef = useRef<number[]>([]);
   const drawingStartedRef = useRef(false);
@@ -79,17 +79,24 @@ export default function Admin() {
   }, []);
 
   // Listen for claims → pause drawing → then admin manually verifies
+  // Helper to invoke auto-draw edge function
+  const invokeAutoDraw = async () => {
+    try {
+      await supabase.functions.invoke('auto-draw', { body: {} });
+    } catch (e) {
+      console.error('auto-draw invoke error', e);
+    }
+  };
+
   useEffect(() => {
     const channel = supabase
       .channel('admin-claims')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bingo_claims' },
         async (payload: any) => {
-          // Pause drawing immediately when claim arrives
+          // Edge function auto-pauses on pending claims, just update UI
           setAutoDraw(false);
-          if (autoDrawRef.current) clearInterval(autoDrawRef.current);
-          toast('⏸️ Claim received — pausing draw for manual verification', { icon: '🔍' });
+          toast('⏸️ Claim received — draw paused for verification', { icon: '🔍' });
 
-          // Refresh claims list
           const { data } = await supabase.from('bingo_claims').select('*').eq('game_id', 'current');
           setClaims(await enrichWithProfiles(data || []));
         }
@@ -170,7 +177,9 @@ export default function Admin() {
       const remainingPending = claims.filter((c: any) => c.is_valid === null && c.id !== claim.id);
       if (remainingPending.length === 0) {
         toast('▶️ No more pending claims — resuming draw');
+        await supabase.from('games').update({ auto_draw: true } as any).eq('id', 'current');
         setAutoDraw(true);
+        invokeAutoDraw();
       }
     }
 
@@ -209,7 +218,9 @@ export default function Admin() {
 
     if (uniqueWinnerCount === 0) {
       toast.warning('No valid claims — resuming draw');
+      await supabase.from('games').update({ auto_draw: true } as any).eq('id', 'current');
       setAutoDraw(true);
+      invokeAutoDraw();
     } else if (uniqueWinnerCount === 1) {
       // Single player wins (even if multiple cartelas)
       const drawnNumbersList = (nums || []).map((n: any) => n.number);
@@ -295,14 +306,28 @@ export default function Admin() {
       .then(({ data }) => setPlayers(data || []));
   }, [tab]);
 
-  // Auto-draw interval
+  // Auto-draw is now server-side — sync UI state from DB
   useEffect(() => {
-    if (autoDrawRef.current) clearInterval(autoDrawRef.current);
-    if (autoDraw && gameStatus === 'active') {
-      autoDrawRef.current = setInterval(() => drawNumberInternal(), drawSpeed * 1000);
-    }
-    return () => { if (autoDrawRef.current) clearInterval(autoDrawRef.current); };
-  }, [autoDraw, gameStatus, drawSpeed]);
+    // Listen for game changes to sync autoDraw state
+    const channel = supabase
+      .channel('admin-game-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'games', filter: 'id=eq.current' },
+        (payload: any) => {
+          const game = payload.new;
+          setAutoDraw(game.auto_draw || false);
+          setGameStatus(game.status);
+          if (game.draw_speed) setDrawSpeed(game.draw_speed);
+          if (game.prize_amount !== undefined) setPrizeAmount(game.prize_amount);
+        }
+      )
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'game_numbers' },
+        (payload: any) => {
+          setDrawnNumbers(prev => [...prev, payload.new.number]);
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const drawNumberInternal = async () => {
     const current = drawnRef.current;
@@ -321,7 +346,7 @@ export default function Admin() {
 
   const startNewGame = async () => {
     setAutoDraw(false);
-    if (autoDrawRef.current) clearInterval(autoDrawRef.current);
+    await supabase.from('games').update({ auto_draw: false } as any).eq('id', 'current');
     if (buyingTimerRef.current) clearInterval(buyingTimerRef.current);
 
     await Promise.all([
@@ -377,25 +402,29 @@ export default function Admin() {
     const prize = Math.floor(totalSales * (1 - houseCutPercent / 100));
     setPrizeAmount(prize);
 
-    await supabase.from('games').update({ status: 'active', prize_amount: prize } as any).eq('id', 'current');
+    await supabase.from('games').update({ status: 'active', prize_amount: prize, auto_draw: true } as any).eq('id', 'current');
     setGameStatus('active');
     setAutoDraw(true);
+    invokeAutoDraw();
     toast.success(`🎲 Game started! ${bought} cartelas sold, prize: ${prize} ETB`);
   };
 
-  const pauseGame = () => {
+  const pauseGame = async () => {
+    await supabase.from('games').update({ auto_draw: false } as any).eq('id', 'current');
     setAutoDraw(false);
     toast('⏸️ Drawing paused');
   };
 
-  const resumeGame = () => {
+  const resumeGame = async () => {
+    await supabase.from('games').update({ auto_draw: true } as any).eq('id', 'current');
     setAutoDraw(true);
+    invokeAutoDraw();
     toast('▶️ Drawing resumed');
   };
 
   const stopGame = async () => {
+    await supabase.from('games').update({ status: 'stopped', auto_draw: false } as any).eq('id', 'current');
     setAutoDraw(false);
-    await supabase.from('games').update({ status: 'stopped' }).eq('id', 'current');
     setGameStatus('stopped');
     toast('🛑 Game stopped');
   };

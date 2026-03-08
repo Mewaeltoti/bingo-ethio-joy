@@ -190,6 +190,7 @@ export type Database = {
       }
       games: {
         Row: {
+          auto_draw: boolean
           cartela_price: number
           created_at: string
           draw_speed: number
@@ -200,6 +201,7 @@ export type Database = {
           winner_id: string | null
         }
         Insert: {
+          auto_draw?: boolean
           cartela_price?: number
           created_at?: string
           draw_speed?: number
@@ -210,6 +212,7 @@ export type Database = {
           winner_id?: string | null
         }
         Update: {
+          auto_draw?: boolean
           cartela_price?: number
           created_at?: string
           draw_speed?: number

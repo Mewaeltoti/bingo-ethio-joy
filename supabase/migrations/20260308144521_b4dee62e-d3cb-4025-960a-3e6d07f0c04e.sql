@@ -1,0 +1,1 @@
+ALTER TABLE public.games ADD COLUMN IF NOT EXISTS auto_draw boolean NOT NULL DEFAULT false;
