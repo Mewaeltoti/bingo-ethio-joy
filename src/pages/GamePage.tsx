@@ -332,11 +332,7 @@ export default function GamePage() {
 
       {/* Buy/Waiting state */}
       {showBuyPrompt && !isGameActive && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="mb-3 p-4 rounded-xl bg-card border border-border text-center"
-        >
+        <div className="mb-3 p-4 rounded-xl bg-card border border-border text-center">
           {gameStatus === 'buying' ? (
             <>
               <div className="text-3xl font-display font-bold text-primary mb-1">
