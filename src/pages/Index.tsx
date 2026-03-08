@@ -26,7 +26,7 @@ export default function Index() {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="gradient-card rounded-2xl p-5 glow-gold mb-6"
+          className="rounded-2xl p-5 bg-card border border-border mb-6"
         >
           <div className="flex items-center gap-2 mb-4">
             <div className="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse" />
@@ -55,7 +55,7 @@ export default function Index() {
         <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}>
           <Link
             to="/cartelas"
-            className="flex items-center justify-center gap-2 w-full py-4 rounded-xl font-display font-bold text-lg gradient-gold text-primary-foreground transition-transform active:scale-95"
+            className="flex items-center justify-center gap-2 w-full py-4 rounded-xl font-display font-bold text-lg bg-primary text-primary-foreground transition-transform active:scale-95"
           >
             Join Game <ArrowRight className="w-5 h-5" />
           </Link>
@@ -71,7 +71,7 @@ export default function Index() {
             { step: '4', text: 'Match the pattern & win!' },
           ].map(({ step, text }) => (
             <div key={step} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
-              <div className="w-8 h-8 rounded-full gradient-gold flex items-center justify-center font-display font-bold text-primary-foreground text-sm shrink-0">
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-display font-bold text-primary-foreground text-sm shrink-0">
                 {step}
               </div>
               <span className="text-sm text-foreground">{text}</span>
