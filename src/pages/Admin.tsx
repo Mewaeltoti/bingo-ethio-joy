@@ -489,23 +489,59 @@ export default function Admin() {
             </div>
           )}
 
-          {/* Claims - system-resolved */}
+          {/* Claims - manual verification */}
           {claims.length > 0 && (
-            <div className="p-3 rounded-xl border border-border bg-muted/30 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-                <AlertTriangle className="w-4 h-4 text-primary" />
-                Claims ({claims.length})
+            <div className="p-3 rounded-xl border border-border bg-muted/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+                  <AlertTriangle className="w-4 h-4 text-primary" />
+                  Claims ({claims.length})
+                </div>
+                {claims.some((c: any) => c.is_valid === null) && (
+                  <button
+                    onClick={verifyAllPendingClaims}
+                    className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold"
+                  >
+                    Verify All
+                  </button>
+                )}
               </div>
               {claims.map((c: any) => (
-                <div key={c.id} className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">
-                    {c.profile?.display_name || c.profile?.phone || c.user_id.slice(0, 8)}
-                  </span>
-                  <span className={c.is_valid ? 'text-secondary font-bold' : c.is_valid === false ? 'text-destructive' : 'text-muted-foreground'}>
-                    {c.is_valid ? '✅ Valid — Winner!' : c.is_valid === false ? '❌ Invalid' : '⏳ Checking...'}
-                  </span>
+                <div key={c.id} className="p-2 rounded-lg bg-card border border-border space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium text-foreground">
+                        {c.profile?.display_name || c.profile?.phone || c.user_id.slice(0, 8)}
+                      </span>
+                      <span className="text-xs text-muted-foreground ml-2">
+                        Cartela #{c.cartela_id}
+                      </span>
+                    </div>
+                    <span className={c.is_valid ? 'text-secondary font-bold text-xs' : c.is_valid === false ? 'text-destructive text-xs' : 'text-muted-foreground text-xs'}>
+                      {c.is_valid ? '✅ Winner!' : c.is_valid === false ? '❌ Invalid' : '⏳ Pending'}
+                    </span>
+                  </div>
+                  {c.is_valid === null && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => verifyClaimManually(c, true)}
+                        className="flex-1 py-1.5 rounded-lg bg-secondary text-secondary-foreground text-xs font-bold flex items-center justify-center gap-1"
+                      >
+                        <Check className="w-3.5 h-3.5" /> Valid Winner
+                      </button>
+                      <button
+                        onClick={() => verifyClaimManually(c, false)}
+                        className="flex-1 py-1.5 rounded-lg bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center gap-1"
+                      >
+                        <X className="w-3.5 h-3.5" /> Invalid
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
+              <p className="text-[10px] text-muted-foreground text-center">
+                1 winner = full prize • 2 winners = split • 3+ = round restart
+              </p>
             </div>
           )}
 
