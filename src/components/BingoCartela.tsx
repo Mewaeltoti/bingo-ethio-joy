@@ -5,30 +5,31 @@ import { playMarkSound } from '@/lib/sounds';
 
 interface BingoCartelaProps {
   numbers: number[][];
+  /** Set of drawn numbers — used to gate clicks, NOT shown visually */
   drawnNumbers?: Set<number>;
-  playerMarked?: Set<number>;
-  onMarkNumber?: (num: number) => void;
+  /** Set of "row-col" strings the player has marked */
+  markedCells?: Set<string>;
+  /** Called with (row, col) when a valid cell is tapped */
+  onMarkCell?: (row: number, col: number) => void;
   size?: 'xs' | 'sm' | 'md' | 'lg';
   onClick?: () => void;
   selected?: boolean;
   isFavorite?: boolean;
   onFavorite?: () => void;
   label?: string;
-  winningCells?: Set<string>;
 }
 
 export default function BingoCartela({
   numbers,
   drawnNumbers = new Set(),
-  playerMarked = new Set(),
-  onMarkNumber,
+  markedCells = new Set(),
+  onMarkCell,
   size = 'md',
   onClick,
   selected,
   isFavorite,
   onFavorite,
   label,
-  winningCells,
 }: BingoCartelaProps) {
   const cellSize =
     size === 'xs' ? 'text-[9px] w-5 h-5' :
@@ -39,9 +40,10 @@ export default function BingoCartela({
   const handleCellClick = (num: number, row: number, col: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (row === 2 && col === 2) return; // free cell
-    if (!onMarkNumber) return;
-    // All cells are clickable — no drawn check
-    onMarkNumber(num);
+    if (!onMarkCell) return;
+    // Only allow marking if the number has been drawn
+    if (!drawnNumbers.has(num)) return;
+    onMarkCell(row, col);
     playMarkSound();
   };
 
@@ -62,7 +64,7 @@ export default function BingoCartela({
           onClick={(e) => { e.stopPropagation(); onFavorite(); }}
           className="absolute top-0.5 right-0.5 p-0.5 z-10"
         >
-          <Heart className={cn('w-3 h-3', isFavorite ? 'fill-red-500 text-red-500' : 'text-muted-foreground')} />
+          <Heart className={cn('w-3 h-3', isFavorite ? 'fill-destructive text-destructive' : 'text-muted-foreground')} />
         </button>
       )}
       {/* Header */}
@@ -80,8 +82,10 @@ export default function BingoCartela({
             {Array.from({ length: 5 }, (_, col) => {
               const num = numbers[row]?.[col] ?? 0;
               const isFree = row === 2 && col === 2;
-              const isMarked = isFree || playerMarked.has(num);
-              const isWinCell = winningCells?.has(`${row}-${col}`);
+              const isMarked = isFree || markedCells.has(`${row}-${col}`);
+              const isDrawn = drawnNumbers.has(num);
+              // Clickable if drawn and not yet marked (and handler exists)
+              const isClickable = onMarkCell && isDrawn && !isMarked && !isFree;
 
               return (
                 <div
@@ -90,12 +94,9 @@ export default function BingoCartela({
                   className={cn(
                     'bingo-cell border-r border-border last:border-r-0 transition-all',
                     cellSize,
-                    // All non-free, non-marked cells are clickable
-                    onMarkNumber && !isFree && !isMarked && 'cursor-pointer hover:bg-primary/10',
+                    isClickable && 'cursor-pointer hover:bg-primary/10',
                     isFree
                       ? 'bingo-cell-free'
-                      : isWinCell
-                      ? 'bg-secondary text-secondary-foreground animate-pulse'
                       : isMarked
                       ? 'bingo-cell-marked'
                       : 'bingo-cell-default'

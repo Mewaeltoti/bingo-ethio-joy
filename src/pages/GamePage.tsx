@@ -5,6 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/lib/auth';
 import { useGamePresence } from '@/hooks/useGamePresence';
 import { getBingoLetter } from '@/lib/bingoEngine';
+import { checkWin } from '@/lib/winDetection';
+import { PatternName } from '@/lib/bingo';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactConfetti from 'react-confetti';
@@ -43,10 +45,11 @@ export default function GamePage() {
   const [gamePattern, setGamePattern] = useState<string>('Full House');
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
   const [showResult, setShowResult] = useState(false);
-  const [playerMarked, setPlayerMarked] = useState<Set<number>>(new Set());
+  // Per-cartela marked cells: cartelaId -> Set<"row-col">
+  const [markedMap, setMarkedMap] = useState<Map<number, Set<string>>>(new Map());
   const [claimedCartelas, setClaimedCartelas] = useState<Set<number>>(new Set());
   const [removedCartelas, setRemovedCartelas] = useState<Set<number>>(new Set());
-  const [strikeMap, setStrikeMap] = useState<Map<number, number>>(new Map()); // cartelaId -> strikes
+  const [strikeMap, setStrikeMap] = useState<Map<number, number>>(new Map());
   const [gameStatus, setGameStatus] = useState<string>('waiting');
   const [buyingCountdown, setBuyingCountdown] = useState(0);
   const buyingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -90,7 +93,7 @@ export default function GamePage() {
       });
   }, [user?.id]);
 
-  // Fetch game state + existing claims for this user
+  // Fetch game state + existing claims
   useEffect(() => {
     async function fetchGameState() {
       const [numbersRes, gameRes, claimsRes] = await Promise.all([
@@ -110,7 +113,6 @@ export default function GamePage() {
           }
         }
       }
-      // Track existing claims for this user
       if (claimsRes.data && user?.id) {
         const userClaims = claimsRes.data.filter((c: any) => c.user_id === user.id);
         const claimed = new Set<number>();
@@ -119,7 +121,7 @@ export default function GamePage() {
         for (const claim of userClaims) {
           const cid = (claim as any).cartela_id;
           if (cid) {
-            if (claim.is_valid === null) claimed.add(cid); // pending
+            if (claim.is_valid === null) claimed.add(cid);
             const s = (claim as any).strike_count || 0;
             strikes.set(cid, Math.max(strikes.get(cid) || 0, s));
             if (s >= 2) removed.add(cid);
@@ -150,15 +152,13 @@ export default function GamePage() {
           const game = payload.new;
           setGameStatus(game.status);
           if (game.status === 'buying') {
-            // Reset state for new game
             setDrawnNumbers([]);
             setShowResult(false);
             setGameResult(null);
-            setPlayerMarked(new Set());
+            setMarkedMap(new Map());
             setClaimedCartelas(new Set());
             setRemovedCartelas(new Set());
             setStrikeMap(new Map());
-            // Re-fetch cartelas (they were released)
             if (user?.id) {
               supabase.from('cartelas').select('*').eq('owner_id', user.id).eq('is_used', true)
                 .then(({ data }) => {
@@ -166,7 +166,6 @@ export default function GamePage() {
                   setIsSpectator(!data || data.length === 0);
                 });
             }
-            // Start local countdown (approx 120s)
             setBuyingCountdown(120);
             if (buyingTimerRef.current) clearInterval(buyingTimerRef.current);
             buyingTimerRef.current = setInterval(() => {
@@ -183,7 +182,6 @@ export default function GamePage() {
           if (game.status === 'active') {
             setBuyingCountdown(0);
             if (buyingTimerRef.current) clearInterval(buyingTimerRef.current);
-            // Re-fetch cartelas for active game
             if (user?.id) {
               supabase.from('cartelas').select('*').eq('owner_id', user.id).eq('is_used', true)
                 .then(({ data }) => {
@@ -197,7 +195,7 @@ export default function GamePage() {
             setDrawnNumbers([]);
             setShowResult(false);
             setGameResult(null);
-            setPlayerMarked(new Set());
+            setMarkedMap(new Map());
             setClaimedCartelas(new Set());
             setRemovedCartelas(new Set());
             setStrikeMap(new Map());
@@ -213,7 +211,6 @@ export default function GamePage() {
           if (game.pattern) setGamePattern(game.pattern);
         }
       )
-      // Listen for claim validation results
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bingo_claims' },
         (payload: any) => {
           const claim = payload.new;
@@ -228,7 +225,6 @@ export default function GamePage() {
             } else {
               toast.warning(`Wrong claim on #${cid}! ${2 - strikes} chance(s) left.`);
             }
-            // Allow re-claiming if not removed
             setClaimedCartelas(prev => {
               const next = new Set(prev);
               next.delete(cid);
@@ -244,21 +240,60 @@ export default function GamePage() {
 
   const lastNumber = drawnNumbers[drawnNumbers.length - 1];
 
-  // Manual marking
-  const handleMarkNumber = useCallback((num: number) => {
-    setPlayerMarked((prev) => {
-      const next = new Set(prev);
-      next.has(num) ? next.delete(num) : next.add(num);
+  // Per-cartela cell marking
+  const handleMarkCell = useCallback((cartelaId: number, row: number, col: number) => {
+    setMarkedMap(prev => {
+      const next = new Map(prev);
+      const cells = new Set(next.get(cartelaId) || []);
+      const key = `${row}-${col}`;
+      if (cells.has(key)) {
+        cells.delete(key);
+      } else {
+        cells.add(key);
+      }
+      next.set(cartelaId, cells);
       return next;
     });
   }, []);
 
-  // Per-cartela BINGO claim
-  const handleClaimBingo = async (cartelaId: number) => {
+  // Convert marked cells (row-col) to a Set of numbers for win checking
+  const getMarkedNumbersForCartela = useCallback((cartela: any): Set<number> => {
+    const cells = markedMap.get(cartela.id) || new Set<string>();
+    const nums = new Set<number>();
+    const numbers = cartela.numbers as number[][];
+    cells.forEach(key => {
+      const [r, c] = key.split('-').map(Number);
+      const num = numbers[r]?.[c];
+      if (num !== undefined) nums.add(num);
+    });
+    return nums;
+  }, [markedMap]);
+
+  // Per-cartela BINGO claim with local validation first
+  const handleClaimBingo = async (cartelaId: number, cartela: any) => {
     if (!user?.id || isSpectator) return;
     if (claimedCartelas.has(cartelaId) || removedCartelas.has(cartelaId)) return;
 
-    // Check how many strikes already
+    // Local validation: check marked numbers match drawn and pattern
+    const markedNums = getMarkedNumbersForCartela(cartela);
+    const numbers = cartela.numbers as number[][];
+
+    // Verify all marked numbers are actually drawn
+    for (const num of markedNums) {
+      if (!drawnSet.has(num)) {
+        toast.error('Invalid claim — you marked a number that hasn\'t been drawn!');
+        return;
+      }
+    }
+
+    // Check pattern locally
+    const localValid = checkWin(numbers, markedNums, gamePattern as PatternName);
+    if (!localValid) {
+      toast.error('Invalid claim — your marked numbers don\'t match the pattern. Check again!');
+      return;
+    }
+
+    // Passed local check — submit to server
     const { data: existingClaims } = await supabase
       .from('bingo_claims')
       .select('*')
@@ -361,7 +396,7 @@ export default function GamePage() {
         </motion.div>
       )}
 
-      {/* New game / waiting banner */}
+      {/* Waiting banner */}
       {(gameStatus === 'waiting' || gameStatus === 'stopped' || gameStatus === 'won') && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -404,7 +439,7 @@ export default function GamePage() {
       </div>
 
       {/* Last drawn number */}
-      {lastNumber && (
+      {lastNumber && gameStatus === 'active' && (
         <motion.div
           key={lastNumber}
           initial={{ scale: 0, rotate: -180 }}
@@ -422,45 +457,49 @@ export default function GamePage() {
       )}
 
       {/* Pattern info */}
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <PatternGrid pattern={gamePattern} />
-          <div>
-            <div className="text-sm font-display font-bold text-foreground">{gamePattern}</div>
-            <div className="text-xs text-muted-foreground">Drawn: {drawnNumbers.length}/75</div>
+      {gameStatus === 'active' && (
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <PatternGrid pattern={gamePattern} />
+            <div>
+              <div className="text-sm font-display font-bold text-foreground">{gamePattern}</div>
+              <div className="text-xs text-muted-foreground">Drawn: {drawnNumbers.length}/75</div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Full 1-75 number board */}
-      <div className="mb-3">
-        <div className="rounded-xl border border-border overflow-hidden bg-card">
-          {['B', 'I', 'N', 'G', 'O'].map((letter, rowIdx) => (
-            <div key={letter} className="flex items-center border-b border-border last:border-b-0">
-              <div className="w-7 flex-shrink-0 text-center font-display font-bold text-primary text-xs py-1 bg-muted/50 border-r border-border">
-                {letter}
+      {gameStatus === 'active' && (
+        <div className="mb-3">
+          <div className="rounded-xl border border-border overflow-hidden bg-card">
+            {['B', 'I', 'N', 'G', 'O'].map((letter, rowIdx) => (
+              <div key={letter} className="flex items-center border-b border-border last:border-b-0">
+                <div className="w-7 flex-shrink-0 text-center font-display font-bold text-primary text-xs py-1 bg-muted/50 border-r border-border">
+                  {letter}
+                </div>
+                <div className="flex flex-1">
+                  {Array.from({ length: 15 }, (_, i) => {
+                    const num = rowIdx * 15 + i + 1;
+                    const isDrawn = drawnSet.has(num);
+                    return (
+                      <div
+                        key={num}
+                        className={cn(
+                          'w-[calc(100%/15)] aspect-square flex items-center justify-center text-[9px] font-medium border-r border-border last:border-r-0 transition-colors',
+                          isDrawn ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                        )}
+                      >
+                        {num}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="flex flex-1">
-                {Array.from({ length: 15 }, (_, i) => {
-                  const num = rowIdx * 15 + i + 1;
-                  const isDrawn = drawnSet.has(num);
-                  return (
-                    <div
-                      key={num}
-                      className={cn(
-                        'w-[calc(100%/15)] aspect-square flex items-center justify-center text-[9px] font-medium border-r border-border last:border-r-0 transition-colors',
-                        isDrawn ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
-                      )}
-                    >
-                      {num}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Player cartelas header */}
       <div className="mb-2 flex items-center justify-between">
@@ -481,49 +520,51 @@ export default function GamePage() {
       <div className="grid grid-cols-2 gap-3 mb-24">
         {activeCartelas.map((c) => {
           const strikes = strikeMap.get(c.id) || 0;
+          const cellsMarked = markedMap.get(c.id) || new Set<string>();
           return (
-          <div key={c.id} className="flex flex-col gap-1.5">
-            <BingoCartela
-              numbers={c.numbers as number[][]}
-              playerMarked={playerMarked}
-              onMarkNumber={isSpectator ? undefined : handleMarkNumber}
-              size="sm"
-              label={`#${c.id}`}
-            />
-            {/* Strike indicator */}
-            {strikes > 0 && (
-              <div className="flex items-center justify-center gap-1 text-xs">
-                {Array.from({ length: 2 }, (_, i) => (
-                  <span
-                    key={i}
-                    className={cn(
-                      'w-2 h-2 rounded-full',
-                      i < strikes ? 'bg-destructive' : 'bg-muted'
-                    )}
-                  />
-                ))}
-                <span className="text-destructive font-medium ml-1">
-                  {2 - strikes} left
-                </span>
-              </div>
-            )}
-            {/* Per-cartela BINGO button */}
-            {!isSpectator && drawnNumbers.length > 0 && !removedCartelas.has(c.id) && (
-              <button
-                onClick={() => handleClaimBingo(c.id)}
-                disabled={claimedCartelas.has(c.id)}
-                className={cn(
-                  'w-full py-2 rounded-xl font-display font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-transform',
-                  claimedCartelas.has(c.id)
-                    ? 'bg-muted text-muted-foreground'
-                    : 'gradient-gold text-primary-foreground glow-gold'
-                )}
-              >
-                <Hand className="w-4 h-4" />
-                {claimedCartelas.has(c.id) ? 'Verifying...' : 'BINGO!'}
-              </button>
-            )}
-          </div>
+            <div key={c.id} className="flex flex-col gap-1.5">
+              <BingoCartela
+                numbers={c.numbers as number[][]}
+                drawnNumbers={drawnSet}
+                markedCells={cellsMarked}
+                onMarkCell={isSpectator ? undefined : (row, col) => handleMarkCell(c.id, row, col)}
+                size="sm"
+                label={`#${c.id}`}
+              />
+              {/* Strike indicator */}
+              {strikes > 0 && (
+                <div className="flex items-center justify-center gap-1 text-xs">
+                  {Array.from({ length: 2 }, (_, i) => (
+                    <span
+                      key={i}
+                      className={cn(
+                        'w-2 h-2 rounded-full',
+                        i < strikes ? 'bg-destructive' : 'bg-muted'
+                      )}
+                    />
+                  ))}
+                  <span className="text-destructive font-medium ml-1">
+                    {2 - strikes} left
+                  </span>
+                </div>
+              )}
+              {/* Per-cartela Claim Bingo button */}
+              {!isSpectator && gameStatus === 'active' && drawnNumbers.length > 0 && !removedCartelas.has(c.id) && (
+                <button
+                  onClick={() => handleClaimBingo(c.id, c)}
+                  disabled={claimedCartelas.has(c.id)}
+                  className={cn(
+                    'w-full py-2 rounded-xl font-display font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-transform',
+                    claimedCartelas.has(c.id)
+                      ? 'bg-muted text-muted-foreground'
+                      : 'gradient-gold text-primary-foreground glow-gold'
+                  )}
+                >
+                  <Hand className="w-4 h-4" />
+                  {claimedCartelas.has(c.id) ? 'Verifying...' : 'Claim Bingo'}
+                </button>
+              )}
+            </div>
           );
         })}
         {activeCartelas.length === 0 && (
