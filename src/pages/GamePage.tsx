@@ -397,6 +397,9 @@ export default function GamePage() {
               <div>
                 <div className="text-sm font-display font-bold text-foreground">{gamePattern}</div>
                 <div className="text-xs text-muted-foreground">{drawnNumbers.length}/75 drawn</div>
+                {prizeAmount > 0 && (
+                  <div className="text-xs font-bold text-primary">🏆 {prizeAmount} ETB</div>
+                )}
               </div>
             </div>
           </div>
