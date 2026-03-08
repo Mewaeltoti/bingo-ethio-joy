@@ -54,6 +54,7 @@ export default function GamePage() {
   const [isSpectator, setIsSpectator] = useState(false);
   const [displayName, setDisplayName] = useState<string>('');
   const [balance, setBalance] = useState(0);
+  const [prizeAmount, setPrizeAmount] = useState(0);
   const user = useUser();
   const navigate = useNavigate();
   const players = useGamePresence(user?.id, displayName);
