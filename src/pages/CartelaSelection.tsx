@@ -1,14 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import PageShell from '@/components/PageShell';
-import BingoCartela from '@/components/BingoCartela';
-// lightweight: no framer-motion
+import CartelaCard from '@/components/CartelaCard';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeWithRetry } from '@/lib/edgeFn';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/lib/auth';
-import { Search, Heart, X, ShoppingCart } from 'lucide-react';
+import { Search, Heart, X, ShoppingCart, Shuffle } from 'lucide-react';
 
 interface Cartela {
   id: string;
@@ -28,7 +27,7 @@ export default function CartelaSelection() {
   const [buying, setBuying] = useState(false);
   const [cartelaPrice, setCartelaPrice] = useState(10);
   const [gameStatus, setGameStatus] = useState<string>('waiting');
-  const pageSize = 20;
+  const pageSize = 30;
   const navigate = useNavigate();
   const user = useUser();
   const loaderRef = useRef<HTMLDivElement>(null);
@@ -61,7 +60,6 @@ export default function CartelaSelection() {
     }
     fetchCartelas();
 
-    // Listen for game status changes
     const ch = supabase
       .channel('cartela-game-status')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'games' },
@@ -78,7 +76,7 @@ export default function CartelaSelection() {
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && visible.length < filtered.length) {
+        if (entries[0].isIntersecting) {
           setPage((p) => p + 1);
         }
       },
@@ -125,6 +123,23 @@ export default function CartelaSelection() {
 
   const clearSelection = () => setSelected(new Set());
 
+  // Quick pick: randomly select N cartelas
+  const quickPick = (count: number) => {
+    const available = filtered.filter(c => !selected.has(c.id));
+    const shuffled = [...available].sort(() => Math.random() - 0.5);
+    const picks = shuffled.slice(0, count).map(c => c.id);
+    setSelected(prev => {
+      const next = new Set(prev);
+      picks.forEach(id => next.add(id));
+      return next;
+    });
+    if (picks.length > 0) {
+      toast.success(`${picks.length} cartela${picks.length > 1 ? 's' : ''} added!`);
+    } else {
+      toast.info('No more available cartelas');
+    }
+  };
+
   const handleBuy = async () => {
     if (!user?.id) { toast.error('Login required!'); return; }
     if (selected.size === 0) { toast.error('Select at least one cartela!'); return; }
@@ -168,6 +183,7 @@ export default function CartelaSelection() {
           </button>
         </div>
       )}
+
       {/* Search & filter */}
       <div className={cn("flex gap-2 mb-3", !canBuy && "opacity-50 pointer-events-none")}>
         <div className="relative flex-1">
@@ -176,30 +192,47 @@ export default function CartelaSelection() {
             type="text"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search by number..."
+            placeholder="Search by ID..."
             className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-muted text-foreground text-sm outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
         <button
           onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-          className={`px-3 rounded-xl flex items-center gap-1 text-xs font-medium transition-colors ${
+          className={cn(
+            'px-3 rounded-xl flex items-center gap-1 text-xs font-medium transition-colors',
             showFavoritesOnly ? 'bg-destructive/20 text-destructive' : 'bg-muted text-muted-foreground'
-          }`}
+          )}
         >
           <Heart className="w-3.5 h-3.5" />
           Favs
         </button>
       </div>
 
+      {/* Quick pick buttons */}
+      <div className={cn("flex gap-2 mb-3 flex-wrap", !canBuy && "opacity-50 pointer-events-none")}>
+        <span className="text-xs text-muted-foreground flex items-center gap-1">
+          <Shuffle className="w-3.5 h-3.5" /> Quick Pick:
+        </span>
+        {[1, 3, 5, 10].map(n => (
+          <button
+            key={n}
+            onClick={() => quickPick(n)}
+            className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 active:scale-95 transition-all"
+          >
+            {n} Card{n > 1 ? 's' : ''}
+          </button>
+        ))}
+      </div>
+
       <p className="text-xs text-muted-foreground mb-3">
-        {filtered.length} available · {cartelaPrice} ETB each · Tap to select
+        {filtered.length} available · {cartelaPrice} ETB each
       </p>
 
       {/* Selected cartelas strip */}
       {selected.size > 0 && (
         <div className="mb-3 p-2 rounded-xl bg-primary/5 border border-primary/20">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-bold text-foreground">{selected.size} selected</span>
+            <span className="text-xs font-bold text-foreground">{selected.size} selected · {cost} ETB</span>
             <button onClick={clearSelection} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5">
               <X className="w-3 h-3" /> Clear
             </button>
@@ -218,20 +251,18 @@ export default function CartelaSelection() {
         </div>
       )}
 
-      {/* Cartela grid */}
-      <div className="grid grid-cols-3 gap-2 mb-6">
+      {/* Cartela list — collapsible cards */}
+      <div className={cn("flex flex-col gap-2 mb-6", !canBuy && "opacity-50 pointer-events-none")}>
         {visible.map((c) => (
-          <div key={c.id}>
-            <BingoCartela
-              numbers={c.numbers}
-              size="xs"
-              label={`#${c.id}`}
-              selected={selected.has(c.id)}
-              onClick={() => toggleSelect(c.id)}
-              isFavorite={favorites.has(c.id)}
-              onFavorite={() => toggleFavorite(c.id)}
-            />
-          </div>
+          <CartelaCard
+            key={c.id}
+            id={c.id}
+            numbers={c.numbers}
+            selected={selected.has(c.id)}
+            isFavorite={favorites.has(c.id)}
+            onToggleSelect={() => toggleSelect(c.id)}
+            onToggleFavorite={() => toggleFavorite(c.id)}
+          />
         ))}
       </div>
 
@@ -243,10 +274,10 @@ export default function CartelaSelection() {
         <div className="fixed bottom-20 left-4 right-4 z-40">
           <button
             onClick={() => setShowConfirm(true)}
-            className="w-full py-4 rounded-xl font-bold gradient-gold text-primary-foreground text-lg active:scale-95 transition-transform flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-xl font-bold gradient-gold text-primary-foreground text-lg active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg"
           >
             <ShoppingCart className="w-5 h-5" />
-            Buy {selected.size} Cartela{selected.size > 1 ? 's' : ''} — {cost} ETB
+            Buy {selected.size} — {cost} ETB
           </button>
         </div>
       )}
@@ -265,7 +296,7 @@ export default function CartelaSelection() {
               Confirm Purchase
             </h3>
             <p className="text-sm text-muted-foreground text-center mb-4">
-              Are you sure you want to buy {selected.size} cartela{selected.size > 1 ? 's' : ''}?
+              Buy {selected.size} cartela{selected.size > 1 ? 's' : ''}?
             </p>
 
             <div className="bg-muted/50 rounded-xl p-3 mb-4 space-y-1">
@@ -305,7 +336,7 @@ export default function CartelaSelection() {
                 disabled={buying}
                 className="flex-1 py-3 rounded-xl gradient-gold text-primary-foreground font-bold text-sm active:scale-95 transition-transform disabled:opacity-50"
               >
-                {buying ? 'Buying...' : 'Confirm'}
+                {buying ? '⏳ Buying...' : 'Confirm'}
               </button>
             </div>
           </div>

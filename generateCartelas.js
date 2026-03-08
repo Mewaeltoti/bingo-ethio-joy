@@ -30,11 +30,12 @@ function generateCartela(id) {
   };
 }
 
-const TOTAL = 1000; // change later
+const START = 1200;
+const END = 10000;
 
 const cartelas = [];
 
-for (let i = 1; i <= TOTAL; i++) {
+for (let i = START; i <= END; i++) {
   cartelas.push(generateCartela(i));
 }
 
@@ -43,4 +44,4 @@ fs.writeFileSync(
   JSON.stringify(cartelas, null, 2)
 );
 
-console.log(`✅ ${TOTAL} casino-style cartelas generated`);
+console.log(`✅ ${END - START + 1} cartelas generated (IDs ${START}–${END})`);
