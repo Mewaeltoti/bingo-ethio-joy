@@ -354,10 +354,22 @@ export default function Admin() {
   };
 
   const startDrawing = async () => {
-    await supabase.from('games').update({ status: 'active' } as any).eq('id', 'current');
+    // Auto-calculate prize from bought cartelas
+    const { count } = await supabase
+      .from('cartelas')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_used', true)
+      .not('owner_id', 'is', null);
+    const bought = count || 0;
+    setBoughtCount(bought);
+    const totalSales = bought * cartelaPrice;
+    const prize = Math.floor(totalSales * (1 - houseCutPercent / 100));
+    setPrizeAmount(prize);
+
+    await supabase.from('games').update({ status: 'active', prize_amount: prize } as any).eq('id', 'current');
     setGameStatus('active');
     setAutoDraw(true);
-    toast.success(`🎲 Game started! Drawing every ${drawSpeed}s`);
+    toast.success(`🎲 Game started! ${bought} cartelas sold, prize: ${prize} ETB`);
   };
 
   const pauseGame = () => {
