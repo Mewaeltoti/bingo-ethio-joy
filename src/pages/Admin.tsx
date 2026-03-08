@@ -5,7 +5,6 @@ import PageShell from '@/components/PageShell';
 import { Users, CreditCard, Gamepad2, Check, X, AlertTriangle, Plus, Minus, Pause, Play, Square, ArrowUpCircle, LogOut } from 'lucide-react';
 import { PATTERNS, PatternName } from '@/lib/bingo';
 import { getBingoLetter } from '@/lib/bingoEngine';
-import { checkWin } from '@/lib/winDetection';
 import { supabase } from '@/integrations/supabase/client';
 import { useGamePresence } from '@/hooks/useGamePresence';
 import { useUser } from '@/lib/auth';
