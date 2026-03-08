@@ -62,6 +62,10 @@ export default function Admin() {
         setGameStatus(gameRes.data.status || 'waiting');
         setDrawSpeed((gameRes.data as any).draw_speed || 10);
         setPrizeAmount((gameRes.data as any).prize_amount || 0);
+        // If game was left in 'buying' state after reload, allow admin to start immediately
+        if (gameRes.data.status === 'buying') {
+          setBuyingCountdown(0); // show "Skip & Start Now" immediately
+        }
       }
       setClaims(await enrichWithProfiles(claimsRes.data || []));
     }
