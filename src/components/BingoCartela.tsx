@@ -17,6 +17,7 @@ interface BingoCartelaProps {
   isFavorite?: boolean;
   onFavorite?: () => void;
   label?: string;
+  showLegend?: boolean;
 }
 
 export default function BingoCartela({
@@ -30,6 +31,7 @@ export default function BingoCartela({
   isFavorite,
   onFavorite,
   label,
+  showLegend = false,
 }: BingoCartelaProps) {
   const cellSize =
     size === 'xs' ? 'text-[9px] w-5 h-5' :
@@ -109,6 +111,23 @@ export default function BingoCartela({
           </div>
         ))}
       </div>
+      {/* Legend */}
+      {showLegend && (
+        <div className="mt-1.5 flex items-center justify-center gap-3 text-[9px] text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-sm bg-muted border border-border" />
+            <span>Unmarked</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-sm bg-primary" />
+            <span>Marked</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-sm bg-accent flex items-center justify-center text-[6px]">★</div>
+            <span>Free</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
