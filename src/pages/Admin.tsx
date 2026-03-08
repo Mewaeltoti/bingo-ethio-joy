@@ -158,6 +158,9 @@ export default function Admin() {
         } else {
           toast.success(`🏆 Winner gets ${prizePerWinner} ETB! Balance credited.`);
         }
+
+        // Auto-reset after 10 seconds
+        setTimeout(startNewGame, 10000);
       }
     } else {
       await supabase.from('bingo_claims').update({ is_valid: false } as any).eq('id', claim.id);
