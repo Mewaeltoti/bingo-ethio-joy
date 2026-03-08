@@ -71,7 +71,7 @@ export default function Index() {
             { step: '4', text: 'Match the pattern & win!' },
           ].map(({ step, text }) => (
             <div key={step} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
-              <div className="w-8 h-8 rounded-full gradient-gold flex items-center justify-center font-display font-bold text-primary-foreground text-sm shrink-0">
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-display font-bold text-primary-foreground text-sm shrink-0">
                 {step}
               </div>
               <span className="text-sm text-foreground">{text}</span>
