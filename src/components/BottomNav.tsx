@@ -42,8 +42,10 @@ export default function BottomNav() {
     toast.success('Logged out');
   };
 
+  const isOnAdmin = pathname === '/admin';
+  const filteredNav = isOnAdmin ? navItems.filter((n) => !(n as any).hideOnAdmin) : navItems;
   const allItems = [
-    ...navItems,
+    ...filteredNav,
     ...(isAdmin ? [{ to: '/admin', icon: Shield, label: 'Admin' }] : []),
   ];
 

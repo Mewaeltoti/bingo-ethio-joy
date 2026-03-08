@@ -284,7 +284,7 @@ export default function Admin() {
                 <div>
                   <div className="text-sm font-medium text-foreground">{d.bank} — {d.amount} ETB</div>
                   <div className="text-xs text-muted-foreground">
-                    Ref: {d.reference} · {(d.profiles as any)?.phone || 'Unknown'}
+                    Ref: {d.reference} · {d.profile?.display_name || d.profile?.phone || 'Unknown'}
                   </div>
                 </div>
                 <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
