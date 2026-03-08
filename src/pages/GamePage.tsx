@@ -391,7 +391,9 @@ export default function GamePage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-24">
-        {activeCartelas.map((c) => (
+        {activeCartelas.map((c) => {
+          const strikes = strikeMap.get(c.id) || 0;
+          return (
           <div key={c.id} className="flex flex-col gap-1.5">
             <BingoCartela
               numbers={c.numbers as number[][]}
@@ -402,6 +404,23 @@ export default function GamePage() {
               label={`#${c.id}`}
               autoMark={false}
             />
+            {/* Strike indicator */}
+            {strikes > 0 && (
+              <div className="flex items-center justify-center gap-1 text-xs">
+                {Array.from({ length: 2 }, (_, i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      'w-2 h-2 rounded-full',
+                      i < strikes ? 'bg-destructive' : 'bg-muted'
+                    )}
+                  />
+                ))}
+                <span className="text-destructive font-medium ml-1">
+                  {2 - strikes} left
+                </span>
+              </div>
+            )}
             {/* Per-cartela BINGO button */}
             {!isSpectator && drawnNumbers.length > 0 && !removedCartelas.has(c.id) && (
               <button
@@ -419,7 +438,8 @@ export default function GamePage() {
               </button>
             )}
           </div>
-        ))}
+          );
+        })}
         {activeCartelas.length === 0 && (
           <div className="col-span-2 text-center text-muted-foreground py-8">
             <Eye className="w-8 h-8 mx-auto mb-2 opacity-40" />
