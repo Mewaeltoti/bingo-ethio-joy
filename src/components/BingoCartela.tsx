@@ -1,15 +1,19 @@
 import { BINGO_LETTERS } from '@/lib/bingo';
 import { cn } from '@/lib/utils';
 import { Heart } from 'lucide-react';
-// lightweight: no framer-motion
+
+const HEADER_COLORS = [
+  'bg-blue-500 text-white',    // B
+  'bg-red-500 text-white',     // I
+  'bg-green-600 text-white',   // N
+  'bg-orange-500 text-white',  // G
+  'bg-purple-600 text-white',  // O
+];
 
 interface BingoCartelaProps {
   numbers: number[][];
-  /** Set of drawn numbers — used to gate clicks */
   drawnNumbers?: Set<number>;
-  /** Set of "row-col" strings the player has marked */
   markedCells?: Set<string>;
-  /** Called with (row, col) when a valid cell is tapped */
   onMarkCell?: (row: number, col: number) => void;
   size?: 'xs' | 'sm' | 'md' | 'lg';
   onClick?: () => void;
@@ -37,11 +41,16 @@ export default function BingoCartela({
     size === 'lg' ? 'text-base w-12 h-12' :
     'text-sm w-10 h-10';
 
+  const headerSize =
+    size === 'xs' ? 'text-[9px] w-5 h-5' :
+    size === 'sm' ? 'text-[10px] w-9 h-6' :
+    size === 'lg' ? 'text-sm w-12 h-8' :
+    'text-xs w-10 h-7';
+
   const handleCellClick = (num: number, row: number, col: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (row === 2 && col === 2) return; // free cell
+    if (row === 2 && col === 2) return;
     if (!onMarkCell) return;
-    // Only allow marking if the number has been drawn
     if (!drawnNumbers.has(num)) return;
     onMarkCell(row, col);
   };
@@ -49,14 +58,14 @@ export default function BingoCartela({
   return (
     <div
       className={cn(
-        'relative rounded-xl border-2 p-1 transition-all duration-200 bg-card',
-        selected ? 'border-primary glow-gold' : 'border-border',
+        'relative rounded-xl border-2 p-1.5 transition-all duration-200 bg-white dark:bg-card',
+        selected ? 'border-primary glow-gold' : 'border-purple-400 dark:border-border',
         onClick && 'cursor-pointer active:scale-[0.98]'
       )}
       onClick={onClick}
     >
       {label && (
-        <div className="text-center text-[10px] font-display text-muted-foreground mb-0.5">{label}</div>
+        <div className="text-center text-[10px] font-display font-bold text-foreground mb-0.5">{label}</div>
       )}
       {onFavorite && (
         <button
@@ -66,18 +75,25 @@ export default function BingoCartela({
           <Heart className={cn('w-3.5 h-3.5', isFavorite ? 'fill-destructive text-destructive' : 'text-muted-foreground')} />
         </button>
       )}
-      {/* Header */}
+      {/* Colored BINGO Header */}
       <div className="grid grid-cols-5 gap-0.5 mb-0.5">
-        {BINGO_LETTERS.map((l) => (
-          <div key={l} className={cn('flex items-center justify-center font-display font-bold text-primary text-xs', size === 'sm' && 'text-[10px]')}>
+        {BINGO_LETTERS.map((l, i) => (
+          <div
+            key={l}
+            className={cn(
+              'flex items-center justify-center font-display font-bold rounded-md',
+              headerSize,
+              HEADER_COLORS[i]
+            )}
+          >
             {l}
           </div>
         ))}
       </div>
-      {/* Grid */}
-      <div className="rounded-md overflow-hidden">
+      {/* Grid with round cells */}
+      <div>
         {Array.from({ length: 5 }, (_, row) => (
-          <div key={row} className="grid grid-cols-5 gap-0.5">
+          <div key={row} className="grid grid-cols-5 gap-0.5 mb-0.5 last:mb-0">
             {Array.from({ length: 5 }, (_, col) => {
               const num = numbers[row]?.[col] ?? 0;
               const isFree = row === 2 && col === 2;
@@ -90,17 +106,19 @@ export default function BingoCartela({
                   key={`${row}-${col}`}
                   onClick={(e) => handleCellClick(num, row, col, e)}
                   className={cn(
-                    'flex items-center justify-center font-display font-bold rounded transition-colors',
+                    'flex items-center justify-center font-display font-bold rounded-full transition-colors',
                     cellSize,
                     isClickable && 'cursor-pointer active:scale-90',
                     isFree
-                      ? 'bg-secondary text-secondary-foreground'
+                      ? 'bg-green-500 text-white'
                       : isMarked
-                      ? 'bg-primary text-primary-foreground shadow-md'
-                      : 'bg-muted text-foreground'
+                      ? 'bg-rose-500 text-white shadow-md'
+                      : isDrawn
+                      ? 'bg-amber-100 dark:bg-muted text-foreground'
+                      : 'bg-muted/60 text-foreground'
                   )}
                 >
-                  {isFree ? '★' : num}
+                  {isFree ? 'F' : num}
                 </div>
               );
             })}
