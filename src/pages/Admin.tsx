@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import PageShell from '@/components/PageShell';
-import { Users, CreditCard, Gamepad2, Check, X, Play, Square, AlertTriangle } from 'lucide-react';
+import { Users, CreditCard, Gamepad2, Check, X, Play, Square, AlertTriangle, Plus, Minus } from 'lucide-react';
 import { PATTERNS, PatternName } from '@/lib/bingo';
 import { getBingoLetter } from '@/lib/bingoEngine';
 import { supabase } from '@/integrations/supabase/client';
