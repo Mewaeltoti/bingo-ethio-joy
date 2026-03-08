@@ -128,8 +128,11 @@ export default function GamePage() {
       .channel('game-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'game_numbers' },
         (payload: any) => {
-          setDrawnNumbers((prev) => [...prev, payload.new.number]);
+          const num = payload.new.number;
+          setDrawnNumbers((prev) => [...prev, num]);
           playDrawSound();
+          announceNumber(num);
+        }
         }
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'games' },
