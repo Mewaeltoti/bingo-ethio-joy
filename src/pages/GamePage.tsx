@@ -113,6 +113,7 @@ export default function GamePage() {
           if (game.status === 'won') {
             setWinner(game.winner_id);
             setShowWinner(true);
+            playWinSound();
           }
           if (game.status === 'waiting') {
             // New game reset
