@@ -60,9 +60,9 @@ export default function Admin() {
     const channel = supabase
       .channel('admin-claims')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bingo_claims' },
-        () => {
-          supabase.from('bingo_claims').select('*, profiles:user_id(display_name, phone)').eq('game_id', 'current')
-            .then(({ data }) => setClaims(data || []));
+        async () => {
+          const { data } = await supabase.from('bingo_claims').select('*').eq('game_id', 'current');
+          setClaims(await enrichWithProfiles(data || []));
         }
       )
       .subscribe();
