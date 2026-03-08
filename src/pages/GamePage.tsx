@@ -151,6 +151,15 @@ export default function GamePage() {
             setPlayerMarked(new Set());
             setClaimedCartelas(new Set());
             setRemovedCartelas(new Set());
+            setStrikeMap(new Map());
+            // Cartelas were released — re-fetch
+            if (user?.id) {
+              supabase.from('cartelas').select('*').eq('owner_id', user.id).eq('is_used', true)
+                .then(({ data }) => {
+                  setPlayerCartelas(data || []);
+                  setIsSpectator(!data || data.length === 0);
+                });
+            }
           }
           if (game.status === 'won') {
             setGameResult({ type: 'winner', message: 'Someone won this round! 🏆' });
