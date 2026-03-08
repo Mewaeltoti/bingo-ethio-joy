@@ -48,8 +48,6 @@ export default function GamePage() {
   // Per-cartela marked cells: cartelaId -> Set<"row-col">
   const [markedMap, setMarkedMap] = useState<Map<number, Set<string>>>(new Map());
   const [claimedCartelas, setClaimedCartelas] = useState<Set<number>>(new Set());
-  const [removedCartelas, setRemovedCartelas] = useState<Set<number>>(new Set());
-  const [strikeMap, setStrikeMap] = useState<Map<number, number>>(new Map());
   const [gameStatus, setGameStatus] = useState<string>('waiting');
   const [buyingCountdown, setBuyingCountdown] = useState(0);
   const buyingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
