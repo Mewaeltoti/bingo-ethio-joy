@@ -333,18 +333,9 @@ export default function GamePage() {
       {/* Buy/Waiting state */}
       {showBuyPrompt && !isGameActive && (
         <div className="mb-3 p-4 rounded-xl bg-card border border-border text-center">
-          {gameStatus === 'buying' ? (
-            <>
-              <div className="text-3xl font-display font-bold text-primary mb-1">
-                {Math.floor(buyingCountdown / 60)}:{String(buyingCountdown % 60).padStart(2, '0')}
-              </div>
-              <p className="text-sm text-muted-foreground mb-3">Buy cartelas before game starts!</p>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground mb-3">
-              {gameStatus === 'won' ? 'Round over! New game soon.' : 'Waiting for next game...'}
-            </p>
-          )}
+          <p className="text-sm text-muted-foreground mb-3">
+            {gameStatus === 'buying' ? 'Buy cartelas before game starts!' : gameStatus === 'won' ? 'Round over! New game soon.' : 'Waiting for next game...'}
+          </p>
           <button
             onClick={() => navigate('/cartelas')}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl gradient-gold text-primary-foreground text-sm font-bold active:scale-95 transition-transform"
