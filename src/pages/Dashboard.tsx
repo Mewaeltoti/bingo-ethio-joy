@@ -99,6 +99,7 @@ export default function Dashboard() {
           )}
         </div>
       </section>
+      </PullToRefresh>
     </PageShell>
   );
 }
