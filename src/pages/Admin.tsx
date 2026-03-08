@@ -107,17 +107,16 @@ export default function Admin() {
 
   // Manual verification by admin — via edge function
   const verifyClaimManually = async (claim: any, isValid: boolean) => {
-    const { data, error } = await supabase.functions.invoke('verify-claim', {
+    setActionLoading(`verify-${claim.id}`);
+    const { data, error } = await invokeWithRetry('verify-claim', {
       body: { action: 'verify_single', claim_id: claim.id, is_valid: isValid },
     });
+    setActionLoading(null);
 
-    if (error) { toast.error('Verification failed'); return; }
+    if (error) { toast.error(`Verification failed: ${error}`); return; }
 
     if (!isValid) {
       toast.warning(`❌ Invalid claim on #${claim.cartela_id}`);
-      if (data?.result === 'invalid') {
-        // auto-draw resumed server-side if no more pending
-      }
     } else if (data?.result === 'valid_pending_remaining') {
       toast.success(`✅ Claim valid! ${data.remaining} more pending...`);
     } else if (data?.result === 'won') {
