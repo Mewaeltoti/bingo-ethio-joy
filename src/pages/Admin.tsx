@@ -125,18 +125,28 @@ export default function Admin() {
         // Count players (cartelas with owners)
         const { count: playersCount } = await supabase.from('cartelas').select('owner_id', { count: 'exact', head: true }).eq('is_used', true).not('owner_id', 'is', null);
 
+        const prizePerWinner = uniqueWinnerCount === 2 ? prizeAmount / 2 : prizeAmount;
         await supabase.from('games').update({ status: 'won', winner_id: claim.user_id }).eq('id', 'current');
         await supabase.from('game_history').insert({
           game_id: 'current', winner_id: claim.user_id, pattern,
-          players_count: playersCount || 0, prize: uniqueWinnerCount === 2 ? prizeAmount / 2 : prizeAmount, drawn_numbers: drawnNumbersList,
+          players_count: playersCount || 0, prize: prizePerWinner, drawn_numbers: drawnNumbersList,
         } as any);
         await supabase.from('game_numbers').delete().eq('game_id', 'current');
+
+        // Credit winner balances
+        for (const wId of Array.from(allValidUserIds)) {
+          const { data: wp } = await supabase.from('profiles').select('balance').eq('id', wId).single();
+          if (wp) {
+            await supabase.from('profiles').update({ balance: (wp as any).balance + prizePerWinner } as any).eq('id', wId);
+          }
+        }
+
         setGameStatus('won');
 
         if (uniqueWinnerCount === 2) {
-          toast.success('🏆 2 different players — Prize split!');
+          toast.success(`🏆 2 winners — ${prizePerWinner} ETB each credited!`);
         } else {
-          toast.success('🏆 Winner verified! Game over.');
+          toast.success(`🏆 Winner gets ${prizePerWinner} ETB! Balance credited.`);
         }
       }
     } else {
