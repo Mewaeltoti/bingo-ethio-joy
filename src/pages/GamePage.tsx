@@ -294,20 +294,6 @@ export default function GamePage() {
     }
 
     // Passed local check — submit to server
-    const { data: existingClaims } = await supabase
-      .from('bingo_claims')
-      .select('*')
-      .eq('game_id', 'current')
-      .eq('user_id', user.id)
-      .eq('cartela_id', cartelaId);
-
-    const currentStrikes = existingClaims?.length || 0;
-    if (currentStrikes >= 2) {
-      toast.error('This cartela has been removed from the game!');
-      setRemovedCartelas(prev => new Set(prev).add(cartelaId));
-      return;
-    }
-
     setClaimedCartelas(prev => new Set(prev).add(cartelaId));
 
     const { error } = await supabase
