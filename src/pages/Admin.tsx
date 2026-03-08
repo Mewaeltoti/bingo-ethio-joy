@@ -262,10 +262,12 @@ export default function Admin() {
   };
 
   const startDrawing = async () => {
-    const { data, error } = await supabase.functions.invoke('game-lifecycle', {
+    setActionLoading('start-drawing');
+    const { data, error } = await invokeWithRetry('game-lifecycle', {
       body: { action: 'start_drawing', prize_amount: prizeAmount },
     });
-    if (error) { toast.error('Failed to start drawing'); return; }
+    setActionLoading(null);
+    if (error) { toast.error(`Failed: ${error}`); return; }
 
     const bought = data?.bought || 0;
     setBoughtCount(bought);
