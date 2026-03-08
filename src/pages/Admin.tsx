@@ -480,6 +480,3 @@ export default function Admin() {
     </PageShell>
   );
 }
-
-// Need motion for animation
-import { motion } from 'framer-motion';
