@@ -30,11 +30,12 @@ function generateCartela(id) {
   };
 }
 
-const TOTAL = 1000; // change later
+const START = 1200;
+const END = 10000;
 
 const cartelas = [];
 
-for (let i = 1; i <= TOTAL; i++) {
+for (let i = START; i <= END; i++) {
   cartelas.push(generateCartela(i));
 }
 
