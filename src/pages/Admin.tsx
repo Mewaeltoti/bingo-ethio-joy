@@ -407,7 +407,7 @@ export default function Admin() {
     const bought = count || 0;
     setBoughtCount(bought);
 
-    await supabase.from('games').update({ status: 'active', prize_amount: prize, auto_draw: true } as any).eq('id', 'current');
+    await supabase.from('games').update({ status: 'active', prize_amount: prizeAmount, auto_draw: true } as any).eq('id', 'current');
     setGameStatus('active');
     setAutoDraw(true);
     invokeAutoDraw();
