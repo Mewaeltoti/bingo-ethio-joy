@@ -14,6 +14,7 @@ export default function BottomNav() {
   const user = useUser();
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [muted, setLocalMuted] = useState(isMuted());
 
   useEffect(() => {
     async function checkAdmin() {
