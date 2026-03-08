@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 // react-confetti removed for lightweight build
 import { cn } from '@/lib/utils';
-import { playDrawSound, playWinSound, playMarkSound } from '@/lib/sounds';
+import { playDrawSound, playWinSound, playMarkSound, announceNumber } from '@/lib/sounds';
 import { Users, Eye, Hand, ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
