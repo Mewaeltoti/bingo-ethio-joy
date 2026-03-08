@@ -17,7 +17,9 @@ export default function Admin() {
   const [gameStatus, setGameStatus] = useState('waiting');
   const [autoDraw, setAutoDraw] = useState(false);
   const [drawSpeed, setDrawSpeed] = useState(10);
+  const [buyingCountdown, setBuyingCountdown] = useState(0);
   const autoDrawRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const buyingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const drawnRef = useRef<number[]>([]);
 
   const [deposits, setDeposits] = useState<any[]>([]);
@@ -195,21 +197,42 @@ export default function Admin() {
   const startNewGame = async () => {
     setAutoDraw(false);
     if (autoDrawRef.current) clearInterval(autoDrawRef.current);
+    if (buyingTimerRef.current) clearInterval(buyingTimerRef.current);
 
     await Promise.all([
       supabase.from('game_numbers').delete().eq('game_id', 'current'),
       supabase.from('bingo_claims').delete().eq('game_id', 'current'),
-      // Release all cartelas so players must buy new ones
       supabase.from('cartelas').update({ is_used: false, owner_id: null } as any).eq('is_used', true),
     ]);
+    // Set game to "buying" status — 2 min rest
     await supabase.from('games').upsert({
-      id: 'current', pattern, status: 'active', winner_id: null, draw_speed: drawSpeed,
+      id: 'current', pattern, status: 'buying', winner_id: null, draw_speed: drawSpeed,
     } as any);
     setDrawnNumbers([]);
     setClaims([]);
+    setGameStatus('buying');
+    setBuyingCountdown(120);
+    toast.success('🛒 2-minute buying period started! Players can buy cartelas now.');
+
+    // Start countdown
+    buyingTimerRef.current = setInterval(() => {
+      setBuyingCountdown(prev => {
+        if (prev <= 1) {
+          if (buyingTimerRef.current) clearInterval(buyingTimerRef.current);
+          // Auto-start drawing
+          startDrawing();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const startDrawing = async () => {
+    await supabase.from('games').update({ status: 'active' } as any).eq('id', 'current');
     setGameStatus('active');
     setAutoDraw(true);
-    toast.success(`🎲 Game started! Cartelas released. Drawing every ${drawSpeed}s`);
+    toast.success(`🎲 Game started! Drawing every ${drawSpeed}s`);
   };
 
   const pauseGame = () => {
@@ -313,7 +336,7 @@ export default function Admin() {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={startNewGame}
-              disabled={autoDraw}
+              disabled={autoDraw || gameStatus === 'buying'}
               className="py-3 rounded-xl font-display font-bold bg-secondary text-secondary-foreground text-sm active:scale-95 transition-transform disabled:opacity-50"
             >
               🎲 New Game
@@ -342,6 +365,29 @@ export default function Admin() {
               </button>
             )}
           </div>
+
+          {/* Buying countdown */}
+          {gameStatus === 'buying' && buyingCountdown > 0 && (
+            <div className="p-4 rounded-xl bg-accent/10 border border-accent/30 text-center space-y-2">
+              <p className="text-sm font-display font-bold text-foreground">
+                🛒 Buying Period
+              </p>
+              <div className="text-3xl font-display font-bold text-primary">
+                {Math.floor(buyingCountdown / 60)}:{String(buyingCountdown % 60).padStart(2, '0')}
+              </div>
+              <p className="text-xs text-muted-foreground">Game starts when timer ends</p>
+              <button
+                onClick={() => {
+                  if (buyingTimerRef.current) clearInterval(buyingTimerRef.current);
+                  setBuyingCountdown(0);
+                  startDrawing();
+                }}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold"
+              >
+                Skip & Start Now
+              </button>
+            </div>
+          )}
 
           {/* Drawing status */}
           {autoDraw && (

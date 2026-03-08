@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import PageShell from '@/components/PageShell';
 import BingoCartela from '@/components/BingoCartela';
 import { supabase } from '@/integrations/supabase/client';
@@ -48,6 +48,8 @@ export default function GamePage() {
   const [removedCartelas, setRemovedCartelas] = useState<Set<number>>(new Set());
   const [strikeMap, setStrikeMap] = useState<Map<number, number>>(new Map()); // cartelaId -> strikes
   const [gameStatus, setGameStatus] = useState<string>('waiting');
+  const [buyingCountdown, setBuyingCountdown] = useState(0);
+  const buyingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isSpectator, setIsSpectator] = useState(false);
   const [displayName, setDisplayName] = useState<string>('');
   const [balance, setBalance] = useState(0);
@@ -147,7 +149,8 @@ export default function GamePage() {
         (payload: any) => {
           const game = payload.new;
           setGameStatus(game.status);
-          if (game.status === 'waiting' || game.status === 'active') {
+          if (game.status === 'buying') {
+            // Reset state for new game
             setDrawnNumbers([]);
             setShowResult(false);
             setGameResult(null);
@@ -155,7 +158,7 @@ export default function GamePage() {
             setClaimedCartelas(new Set());
             setRemovedCartelas(new Set());
             setStrikeMap(new Map());
-            // Cartelas were released — re-fetch
+            // Re-fetch cartelas (they were released)
             if (user?.id) {
               supabase.from('cartelas').select('*').eq('owner_id', user.id).eq('is_used', true)
                 .then(({ data }) => {
@@ -163,9 +166,41 @@ export default function GamePage() {
                   setIsSpectator(!data || data.length === 0);
                 });
             }
-            if (game.status === 'active') {
-              toast('🎲 New game started! Good luck!', { icon: '🔔' });
+            // Start local countdown (approx 120s)
+            setBuyingCountdown(120);
+            if (buyingTimerRef.current) clearInterval(buyingTimerRef.current);
+            buyingTimerRef.current = setInterval(() => {
+              setBuyingCountdown(prev => {
+                if (prev <= 1) {
+                  if (buyingTimerRef.current) clearInterval(buyingTimerRef.current);
+                  return 0;
+                }
+                return prev - 1;
+              });
+            }, 1000);
+            toast('🛒 New game! Buy your cartelas — 2 minutes!', { icon: '🔔' });
+          }
+          if (game.status === 'active') {
+            setBuyingCountdown(0);
+            if (buyingTimerRef.current) clearInterval(buyingTimerRef.current);
+            // Re-fetch cartelas for active game
+            if (user?.id) {
+              supabase.from('cartelas').select('*').eq('owner_id', user.id).eq('is_used', true)
+                .then(({ data }) => {
+                  setPlayerCartelas(data || []);
+                  setIsSpectator(!data || data.length === 0);
+                });
             }
+            toast('🎲 Game started! Good luck!', { icon: '🔔' });
+          }
+          if (game.status === 'waiting') {
+            setDrawnNumbers([]);
+            setShowResult(false);
+            setGameResult(null);
+            setPlayerMarked(new Set());
+            setClaimedCartelas(new Set());
+            setRemovedCartelas(new Set());
+            setStrikeMap(new Map());
           }
           if (game.status === 'won') {
             setGameResult({ type: 'winner', message: 'Someone won this round! 🏆' });
@@ -303,6 +338,28 @@ export default function GamePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Buying period countdown */}
+      {gameStatus === 'buying' && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-3 p-4 rounded-xl border-2 border-primary/30 bg-primary/5 text-center"
+        >
+          <div className="text-2xl mb-1">🛒</div>
+          <p className="text-sm font-display font-bold text-foreground mb-1">Buy Your Cartelas!</p>
+          <div className="text-3xl font-display font-bold text-primary my-2">
+            {Math.floor(buyingCountdown / 60)}:{String(buyingCountdown % 60).padStart(2, '0')}
+          </div>
+          <p className="text-xs text-muted-foreground mb-2">Game starts when timer ends</p>
+          <button
+            onClick={() => navigate('/cartelas')}
+            className="px-4 py-2 rounded-xl gradient-gold text-primary-foreground text-sm font-bold active:scale-95 transition-transform"
+          >
+            Buy Cartelas
+          </button>
+        </motion.div>
+      )}
 
       {/* New game / waiting banner */}
       {(gameStatus === 'waiting' || gameStatus === 'stopped' || gameStatus === 'won') && (
