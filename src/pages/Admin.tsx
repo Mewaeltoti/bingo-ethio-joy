@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import PageShell from '@/components/PageShell';
-import { Users, CreditCard, Gamepad2, Check, X, AlertTriangle, Plus, Minus, Pause, Play, Square, ArrowUpCircle } from 'lucide-react';
+import { Users, CreditCard, Gamepad2, Check, X, AlertTriangle, Plus, Minus, Pause, Play, Square, ArrowUpCircle, LogOut } from 'lucide-react';
 import { PATTERNS, PatternName } from '@/lib/bingo';
 import { getBingoLetter } from '@/lib/bingoEngine';
 import { checkWin } from '@/lib/winDetection';
@@ -35,7 +36,14 @@ export default function Admin() {
   const [adjustAmount, setAdjustAmount] = useState('');
 
   const user = useUser();
+  const navigate = useNavigate();
   const onlinePlayers = useGamePresence(user?.id, 'Admin');
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success('Logged out');
+    navigate('/login');
+  };
 
   const tabs = [
     { key: 'game' as const, label: 'Game', icon: Gamepad2 },
@@ -447,12 +455,19 @@ export default function Admin() {
 
   return (
     <PageShell title="Admin Panel">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/10 text-xs">
           <Users className="w-3.5 h-3.5 text-secondary" />
           <span className="font-bold text-secondary">{onlinePlayers.length}</span>
           <span className="text-muted-foreground">players online</span>
         </div>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20 transition-colors"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          Logout
+        </button>
       </div>
 
       <div className="flex gap-2 mb-6">
