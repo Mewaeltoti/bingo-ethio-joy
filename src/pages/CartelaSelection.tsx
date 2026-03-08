@@ -126,6 +126,7 @@ export default function CartelaSelection() {
   const handleBuy = async () => {
     if (!user?.id) { toast.error('Login required!'); return; }
     if (selected.size === 0) { toast.error('Select at least one cartela!'); return; }
+    if (!canBuy) { toast.error('Cannot buy cartelas during an active game!'); return; }
 
     setBuying(true);
 
