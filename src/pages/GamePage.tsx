@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactConfetti from 'react-confetti';
 import { cn } from '@/lib/utils';
+import { playDrawSound, playWinSound } from '@/lib/sounds';
 
 const PATTERN_CELLS: Record<string, boolean[][]> = {
   'Full House': Array(5).fill(Array(5).fill(true)),
