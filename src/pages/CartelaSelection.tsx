@@ -132,7 +132,7 @@ export default function CartelaSelection() {
 
     setBuying(true);
 
-    const { data, error } = await supabase.functions.invoke('purchase-cartela', {
+    const { data, error } = await invokeWithRetry('purchase-cartela', {
       body: { cartela_ids: Array.from(selected).map(Number) },
     });
 
