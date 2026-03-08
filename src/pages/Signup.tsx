@@ -46,7 +46,7 @@ export default function Signup() {
     }
 
     toast.success('Account created! Welcome to Bingo Ethio!');
-    navigate('/');
+    navigate('/game');
   };
 
   return (
