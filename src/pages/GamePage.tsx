@@ -50,6 +50,7 @@ export default function GamePage() {
   const [buyingCountdown, setBuyingCountdown] = useState(0);
   const buyingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isSpectator, setIsSpectator] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(true);
   const [displayName, setDisplayName] = useState<string>('');
   const [balance, setBalance] = useState(0);
   const [prizeAmount, setPrizeAmount] = useState(0);
