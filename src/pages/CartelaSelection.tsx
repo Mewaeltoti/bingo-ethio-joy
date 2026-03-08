@@ -279,7 +279,7 @@ export default function CartelaSelection() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Price each</span>
-                  <span className="text-foreground font-medium">20 ETB</span>
+                  <span className="text-foreground font-medium">{cartelaPrice} ETB</span>
                 </div>
                 <div className="border-t border-border my-1" />
                 <div className="flex justify-between text-sm font-bold">
