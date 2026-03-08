@@ -102,6 +102,7 @@ export default function GamePage() {
         (payload: any) => {
           const newNumber = payload.new.number;
           setDrawnNumbers((prev) => [...prev, newNumber]);
+          playDrawSound();
         }
       )
       .on(
