@@ -1,4 +1,4 @@
-import { Gamepad2, Wallet, LogOut, Shield, Plus } from 'lucide-react';
+import { Gamepad2, Wallet, LogOut, Shield, Plus, UserCircle } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/lib/auth';
@@ -44,8 +44,8 @@ export default function BottomNav() {
   const playerItems = [
     { to: '/game', icon: Gamepad2, label: 'Game' },
     { to: '/cartelas', icon: Plus, label: 'Cartelas' },
-    
     { to: '/payment', icon: Wallet, label: 'Wallet' },
+    { to: '/profile', icon: UserCircle, label: 'Profile' },
   ];
 
   const items = isAdmin ? adminItems : playerItems;

@@ -9,6 +9,8 @@ export default function Login() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -47,6 +49,25 @@ export default function Login() {
 
     toast.success('Welcome back!');
     navigate('/game');
+  };
+  const handleForgotPassword = async () => {
+    if (!phone) {
+      toast.error('Enter your phone number first');
+      return;
+    }
+    setLoading(true);
+    const formattedPhone = phone.startsWith('+') ? phone : `+251${phone.replace(/^0/, '')}`;
+    const fakeEmail = `${formattedPhone.replace('+', '')}@bingo.local`;
+    const { error } = await supabase.auth.resetPasswordForEmail(fakeEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error('Failed to send reset link');
+      return;
+    }
+    setResetSent(true);
+    toast.success('Password reset link sent! Check your email.');
   };
 
   return (
@@ -101,6 +122,27 @@ export default function Login() {
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
+
+          <div className="text-center mt-4">
+            <button
+              type="button"
+              onClick={() => setForgotMode(!forgotMode)}
+              className="text-sm text-primary font-medium"
+            >
+              Forgot password?
+            </button>
+            {forgotMode && (
+              <div className="mt-2">
+                <button
+                  onClick={handleForgotPassword}
+                  disabled={loading}
+                  className="text-sm px-4 py-2 rounded-lg bg-muted text-foreground font-medium disabled:opacity-50"
+                >
+                  {resetSent ? 'Link sent!' : 'Send Reset Link'}
+                </button>
+              </div>
+            )}
+          </div>
 
           <p className="text-center text-sm text-muted-foreground mt-6">
             Don't have an account?{' '}

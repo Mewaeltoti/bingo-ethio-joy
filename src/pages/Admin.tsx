@@ -125,18 +125,28 @@ export default function Admin() {
         // Count players (cartelas with owners)
         const { count: playersCount } = await supabase.from('cartelas').select('owner_id', { count: 'exact', head: true }).eq('is_used', true).not('owner_id', 'is', null);
 
+        const prizePerWinner = uniqueWinnerCount === 2 ? prizeAmount / 2 : prizeAmount;
         await supabase.from('games').update({ status: 'won', winner_id: claim.user_id }).eq('id', 'current');
         await supabase.from('game_history').insert({
           game_id: 'current', winner_id: claim.user_id, pattern,
-          players_count: playersCount || 0, prize: uniqueWinnerCount === 2 ? prizeAmount / 2 : prizeAmount, drawn_numbers: drawnNumbersList,
+          players_count: playersCount || 0, prize: prizePerWinner, drawn_numbers: drawnNumbersList,
         } as any);
         await supabase.from('game_numbers').delete().eq('game_id', 'current');
+
+        // Credit winner balances
+        for (const wId of Array.from(allValidUserIds)) {
+          const { data: wp } = await supabase.from('profiles').select('balance').eq('id', wId).single();
+          if (wp) {
+            await supabase.from('profiles').update({ balance: (wp as any).balance + prizePerWinner } as any).eq('id', wId);
+          }
+        }
+
         setGameStatus('won');
 
         if (uniqueWinnerCount === 2) {
-          toast.success('🏆 2 different players — Prize split!');
+          toast.success(`🏆 2 winners — ${prizePerWinner} ETB each credited!`);
         } else {
-          toast.success('🏆 Winner verified! Game over.');
+          toast.success(`🏆 Winner gets ${prizePerWinner} ETB! Balance credited.`);
         }
       }
     } else {
@@ -198,21 +208,33 @@ export default function Admin() {
         players_count: playersCount || 0, prize: prizeAmount, drawn_numbers: drawnNumbersList,
       } as any);
       await supabase.from('game_numbers').delete().eq('game_id', 'current');
+
+      // Credit winner balance
+      const { data: wp } = await supabase.from('profiles').select('balance').eq('id', winnerId).single();
+      if (wp) {
+        await supabase.from('profiles').update({ balance: (wp as any).balance + prizeAmount } as any).eq('id', winnerId);
+      }
+
       setGameStatus('won');
       setDrawnNumbers([]);
       const winnerName = validClaimers.find((c: any) => c.user_id === winnerId)?.profile?.display_name || 'Player';
-      toast.success(`🏆 ${winnerName} wins! (${validClaimers.length} cartela${validClaimers.length > 1 ? 's' : ''})`);
+      toast.success(`🏆 ${winnerName} wins ${prizeAmount} ETB! Balance credited.`);
     } else if (uniqueWinnerCount === 2) {
       // 2 different players — split prize
+      const splitPrize = prizeAmount / 2;
       const drawnNumbersList = (nums || []).map((n: any) => n.number);
       const { count: playersCount2 } = await supabase.from('cartelas').select('owner_id', { count: 'exact', head: true }).eq('is_used', true).not('owner_id', 'is', null);
       await supabase.from('games').update({ status: 'won', winner_id: uniqueWinnerIds[0] }).eq('id', 'current');
-      // Insert history for each winner with split prize
       for (const wId of uniqueWinnerIds) {
         await supabase.from('game_history').insert({
           game_id: 'current', winner_id: wId, pattern: currentPattern,
-          players_count: playersCount2 || 0, prize: prizeAmount / 2, drawn_numbers: drawnNumbersList,
+          players_count: playersCount2 || 0, prize: splitPrize, drawn_numbers: drawnNumbersList,
         } as any);
+        // Credit each winner
+        const { data: wp } = await supabase.from('profiles').select('balance').eq('id', wId).single();
+        if (wp) {
+          await supabase.from('profiles').update({ balance: (wp as any).balance + splitPrize } as any).eq('id', wId);
+        }
       }
       await supabase.from('game_numbers').delete().eq('game_id', 'current');
       setGameStatus('won');
@@ -221,7 +243,7 @@ export default function Admin() {
         const c = validClaimers.find((cl: any) => cl.user_id === id);
         return c?.profile?.display_name || c?.profile?.phone || 'Player';
       });
-      toast.success(`🏆 Prize split: ${names.join(' & ')}`);
+      toast.success(`🏆 ${splitPrize} ETB each: ${names.join(' & ')}`);
     } else {
       // 3+ different players — disqualify round
       await supabase.from('games').update({ status: 'disqualified', winner_id: null } as any).eq('id', 'current');
