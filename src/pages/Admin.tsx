@@ -346,7 +346,7 @@ export default function Admin() {
 
   const startNewGame = async () => {
     setAutoDraw(false);
-    if (autoDrawRef.current) clearInterval(autoDrawRef.current);
+    await supabase.from('games').update({ auto_draw: false } as any).eq('id', 'current');
     if (buyingTimerRef.current) clearInterval(buyingTimerRef.current);
 
     await Promise.all([
