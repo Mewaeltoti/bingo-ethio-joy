@@ -85,15 +85,6 @@ export default function Admin() {
     fetchState();
   }, []);
 
-  // Listen for claims → pause drawing → then admin manually verifies
-  // Helper to invoke auto-draw edge function
-  const invokeAutoDraw = async () => {
-    try {
-      await supabase.functions.invoke('auto-draw', { body: {} });
-    } catch (e) {
-      console.error('auto-draw invoke error', e);
-    }
-  };
 
   useEffect(() => {
     const channel = supabase
