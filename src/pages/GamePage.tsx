@@ -180,13 +180,14 @@ export default function GamePage() {
           const cid = claim.cartela_id;
           if (claim.is_valid === false) {
             const strikes = claim.strike_count || 0;
+            setStrikeMap(prev => new Map(prev).set(cid, strikes));
             if (strikes >= 2) {
               toast.error(`Cartela #${cid} removed — 2 wrong claims!`);
               setRemovedCartelas(prev => new Set(prev).add(cid));
             } else {
               toast.warning(`Wrong claim on #${cid}! ${2 - strikes} chance(s) left.`);
             }
-            // Allow re-claiming
+            // Allow re-claiming if not removed
             setClaimedCartelas(prev => {
               const next = new Set(prev);
               next.delete(cid);
